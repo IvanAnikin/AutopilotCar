@@ -1,0 +1,9 @@
+# f_r_c_e_g_t_b_a_r_d
+# 0 - frame		- f     - not use   for training
+# 1 - resized		- s     - (use)     for training
+# 2 - canny_edges	- e     - (use)     for training
+# 3 - blackAndWhite	- b     - use       for training
+# 4 - contours		- c     - use       for training
+# 5 - action		- a     - use       for training
+# 6 - reward		- r     - use       for training
+# 7 - distance		- d     - (use)     for training
