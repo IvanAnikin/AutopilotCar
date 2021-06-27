@@ -71,3 +71,6 @@ class PreprocessManager():
 
         return reward
 
+    def objects_detection(self):
+
+

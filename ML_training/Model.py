@@ -44,7 +44,7 @@ class DNN():
       x = Dense(4, activation="relu")(combinedInput)
       x = Dense(self.output_size, activation="linear")(x)
 
-      model = Model(inputs=[models[0].input, models[0].input], outputs=x)
+      model = Model(inputs=[models[0].input, models[1].input], outputs=x)
 
     elif(len(models) == 1):
       x = Dense(self.output_size, activation="linear")(models[0].output)
@@ -61,7 +61,7 @@ class DNN():
     if(self.c_dim != 0):
       c_input = Input(shape=self.c_dim)
       c = Dense(8, activation="relu")(c_input)
-      x = tf.keras.layers.Reshape((4,))(c)
+      x = tf.keras.layers.Reshape((8,))(c)
       combined_inputs_array.append(x)
       inputs_array.append(c_input)
     if (self.a_dim != 0):

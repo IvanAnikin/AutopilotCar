@@ -2,11 +2,13 @@ import time
 
 import numpy as np
 import sys
-import progressbar
 from bidict import bidict
-import datetime
 
 from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
+from keras import backend as K
+from tensorflow.python.framework.ops import disable_eager_execution
+#disable_eager_execution()
 
 import ML_training.Agent as Agents
 from Managers import dataset_manager
@@ -18,22 +20,23 @@ class Trainer():
         dataset_type = [1, 1, 1, 1, 1, 1, 1, 1],
         subname = "new",
         datasets_directory = "C:/ML_car/Datasets/Preprocessed/710e9e3",
-        model_subname = "0fd3a43",
-        dim=[[0, 0, 0],[0, 0, 1]],      # [0, 1, 1]     #c_dim = (None, 1, 2)   # [[contours, action, distance],[resized, canny_edges, blackAndWhite]]
+        dim=[[0, 0, 0],[0, 1, 1]],      # [0, 1, 1]     #c_dim = (None, 1, 2)   # [[contours-not works, action, distance]-not works,[resized-not works, canny_edges, blackAndWhite]]
+        model_subname = "",
         vid_dim=[120, 160],
         actions = [0, 2, 3],       # 0-Forward; 1-Backward; 2-Left; 3-Right
         optimizer = Adam(learning_rate=0.01),
         batch_size = 32, #width = 120, height = 160, depth = 2
-        load_model=True
+        load_model=False
         ):
         super().__init__()
 
+        if model_subname=="": model_subname = str(dim)
+        self.batch_size = batch_size
         self.actions_relations = bidict({0:0, 1:2, 2:3})    # model:dataset
         self.default_y = 0
         self.output_size = len(actions)
         self.dim = dim[0]
         self.vid_inputs = dim[1]
-        self.batch_size = batch_size
         self.vid_dim = np.array(np.append(np.array(vid_dim).astype(int), sum(1 for e in self.vid_inputs if e is not 0))).astype(int)
         self.state_size = [self.dim, self.vid_dim]
         self.process_string = '\r timestep: {timestep}/{dataset_len} - {percentage}% | model_actions avg: {model_actions_avg} | total time: {total_time} | ' \
@@ -99,7 +102,7 @@ class Trainer():
         num_data = []
         vid_data = []
         state = []
-        if (self.dim[0] != 0): num_data.append(row[4])
+        if (self.dim[0] != 0): num_data.append(row[4][0]) #np.array #tf.convert_to_tensor(row[4][0], dtype=tf.int64) #np.asarray(row[4][0]).astype(np.float32)
         if (self.dim[1] != 0): num_data.append(row[5])
         if (self.dim[2] != 0): num_data.append(row[7])
         if (len(num_data) != 0): state.append(num_data)
@@ -107,9 +110,11 @@ class Trainer():
         if (self.vid_inputs[0] != 0): vid_data.append(row[1])
         if (self.vid_inputs[1] != 0): vid_data.append(row[2])
         if (self.vid_inputs[2] != 0): vid_data.append(row[3])
+        if(len(num_data)!=0):vid_data = [vid_data]
         if (len(vid_data) != 0): state.append(vid_data)
 
         state = np.array(state)
+        #state2 = [state1[0], [state1[1]]]
 
         # Convert action to model action using bidict
         action = self.actions_relations.inverse[row[5]]
