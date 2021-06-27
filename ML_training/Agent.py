@@ -92,19 +92,23 @@ class DQN():
 
             self.q_network.fit(state, target, epochs=1, verbose=0)
 
-    def save_model(self):
+    def save_model(self, subname=""):
+
         tf.keras.models.save_model(
-            self.q_network, "{directory}/{name}".format(directory=self.models_directory,name=self.models_names["t_name"]),
-            overwrite=True, include_optimizer=True, save_format=None, signatures=None, options=None, save_traces=True)
+            self.q_network, "{directory}/Training/{subname}/{name}".format(directory=self.models_directory,name=self.models_names["q_name"],
+                                                                                subname=subname), overwrite=True, include_optimizer=True,
+                                                                 save_format=None, signatures=None, options=None, save_traces=True)
         tf.keras.models.save_model(
-            self.target_network, "{directory}/{name}".format(directory=self.models_directory,name=self.models_names["q_name"]),
-            overwrite=True, include_optimizer=True, save_format=None,signatures=None, options=None, save_traces=True)
+            self.target_network, "{directory}/Training/{subname}/{name}".format(directory=self.models_directory,name=self.models_names["t_name"],
+                                                                                subname=subname), overwrite=True, include_optimizer=True,
+                save_format=None,signatures=None, options=None, save_traces=True)
 
     def visualise_model(self):
         self.q_network.summary()
         self.target_network.summary()
         plot_model(model=self.q_network, to_file="{directory}/img/{name}.png".format(directory=self.models_directory, name=self.models_names["q_name"]), show_shapes=True)
         plot_model(model=self.target_network, to_file="{directory}/img/{name}.png".format(directory=self.models_directory, name=self.models_names["t_name"]), show_shapes=True)
+
 
 class DNN():
 
