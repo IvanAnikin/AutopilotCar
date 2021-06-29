@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 from Managers import preporcess_manager
 
 class DatasetManager():
-    def __init__(self, dataset_type = [1, 0, 0, 0, 0, 1, 0, 1], subname="", data=[], save_every = 5, step_from_saving = 0, minimal_distance = 15,
-                 type = "explorer", datasets_directory="C:/Users/ivana/OneDrive/Coding/ML/Com_Vis/car_project/Datasets"):   #"../Datasets" #/Normalised brightness
+    def __init__(self, dataset_type = [1, 1, 1, 1, 1, 1, 1, 1, 1], subname="", data=[], save_every = 5, step_from_saving = 0, minimal_distance = 15,
+                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3"):   #"../Datasets" #/Normalised brightness
         self.save_every = save_every
         self.step_from_saving = step_from_saving
-        self.dataset_name_letters = ["f", "s", "e", "b", "c", "a", "r", "d"]
-        self.dataset_vars = ["last_frame", "resized", "canny_edges", "blackAndWhite", "contours", "action", "reward", "distance"]
+        self.dataset_name_letters = ["f", "s", "e", "b", "c", "a", "r", "d", "o"]
+        self.dataset_vars = ["last_frame", "resized", "canny_edges", "blackAndWhite", "contours", "action", "reward", "distance", "Detected objects"]
         self.dataset_type = dataset_type
         self.datasets_directory = datasets_directory
         self.dataset_name = self.dataset_name_from_type(dataset_type, subname=subname)
@@ -92,7 +92,7 @@ class DatasetManager():
             dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
 
             if not os.path.exists(new_directory + file_name): np.save(new_directory + file_name, self.dataset_preprocess(dataset=dataset))
-            #else: raise FileExistsError('The file already exists')
+            else: raise FileExistsError('The file already exists')
 
 
     def visualise_dataset_numbers(self):
@@ -132,7 +132,19 @@ class DatasetManager():
             elif(self.dataset_type[1]):frame = row[1]
             elif(self.dataset_type[2]):frame = row[2]
             elif(self.dataset_type[3]):frame = row[3]
-            if (self.dataset_type[1]): cv2.imshow('resized', row[1])
+            if (self.dataset_type[1]):
+                if (self.dataset_type[8]):
+                    for id,box in row[8]:
+                        # extract the bounding box coordinates
+                        (x, y) = (box[0], box[1])
+                        (w, h) = (box[2], box[3])
+                        # draw a bounding box rectangle and label on the frame
+                        color = [int(c) for c in self.preprocessManager.COLORS[id]]
+                        cv2.rectangle(row[1], (x, y), (x + w, y + h), color, 2)
+                        text = "{}".format(self.preprocessManager.LABELS[id])
+                        cv2.putText(row[1], text, (x, y - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                cv2.imshow('resized', row[1])
             if (self.dataset_type[2]): cv2.imshow('canny_edges', row[2])
             if (self.dataset_type[3]): cv2.imshow('blackAndWhite', row[3])
             if(self.dataset_type[4]):
@@ -325,19 +337,50 @@ class DatasetManager():
             if row[param] > coefficient * np.average(self.dataset[:,param]): row[param] = self.get_range_avg(param=param, i=i)
             i+=1
 
+    def add_objects(self):
+
+        files = [i for i in os.listdir(self.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_s_e_b_c_a_r_d_new' in i]
+
+
+        for file_name in files:
+
+            dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
+            new_dataset = []
+
+            print("Dataset: {name}".format(name=file_name))
+
+            count = 0
+            for row in dataset:
+                objects_detected = self.preprocessManager.objects_detection(row[0], visualise=False, scale_percent=50)
+
+                last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance = row
+
+                new_row = (last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, objects_detected)
+                new_dataset.append(new_row)
+
+                print("Step: {step}/{len} | Objects detected: {objects_detected}".format(objects_detected=objects_detected, step=count, len=len(dataset)))
+
+                count+=1
+
+            print("New dataset shape: {shape}".format(shape = np.array(new_dataset).shape))
+            if not os.path.exists(self.datasets_directory + "/with_objects/" + file_name): np.save(self.datasets_directory + "/with_objects/" + file_name, np.array(new_dataset))
+            else: raise FileExistsError('The file already exists')
 
 # Dataset type:
 
-# f_r_c_e_g_t_b_a_r_d
+# f_r_c_e_g_t_b_a_r_d_o
 # 0 - frame		    - f     - not use   for training
-# 1 - resized		- s     - (use)     for training
-# 2 - canny_edges	- e     - (use)     for training
-# 3 - blackAndWhite	- b     - use       for training
-# 4 - contours		- c     - use       for training
-# 5 - action		- a     - use       for training
-# 6 - reward		- r     - use       for training
-# 7 - distance		- d     - (use)     for training
+# 1 - resized		- s     - (use)     for training    - doesn't work
+# 2 - canny_edges	- e     - (use)     for training    - works
+# 3 - blackAndWhite	- b     - use       for training    - works
+# 4 - contours		- c     - use       for training    - doesn't work
+# 5 - action		- a     - use       for training    - doesn't work
+# 6 - reward		- r     - use       for training    - doesn't work
+# 7 - distance		- d     - (use)     for training    - works
+# 8 - objects       - o     - (use)     for training
 
 # Dataset versions:
 
-# 1 -- lower than min distance punishment, frames difference if edges exist, reward for count of canny edges
+# 710e9e3   -- lower than min distance punishment, frames difference if edges exist, reward for count of canny edges
+#           -- + reward for new object
