@@ -4,8 +4,8 @@ import os
 import time
 
 class PreprocessManager():
-    def __init__(self, contours_count = 5, minimal_distance = 15, type = "explorer",
-                 edges_avg = 120000, edges_max = 500000, edges_coefficient = 20000, min_edges_sum_for_difference = 100):
+    def __init__(self, contours_count = 5, minimal_distance = 15, type = "explorer", edges_avg = 120000, edges_max = 500000,
+                 edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10,  new_object_reward = 10):
         self.contours_count = contours_count
         self.minimal_distance = minimal_distance
         self.type = type
@@ -16,6 +16,9 @@ class PreprocessManager():
         self.model_path = "./CV_Models/"
         self.confidence_default = 0.5
         self.threshold_default = 0.3
+        self.detected_objects = []
+        self.new_object_reward = new_object_reward
+        self.object_reward = object_reward
 
         # load the COCO class labels our YOLO model was trained on
         labelsPath = os.path.sep.join([self.model_path, "coco.names"])
@@ -65,25 +68,33 @@ class PreprocessManager():
     # Dependencies:
     #   common: distance    - too close = -10                                                                   # -> Other proportions of dependencies
     #   explorer: frame difference from others
-    def reward_calculator(self, frame, last_frame, distance, canny_edges=[]):
+    def reward_calculator(self, frame, last_frame, distance, canny_edges=[], objects=[]):
 
         reward = 0
+        # __1__ - Punishment for too little distance
         if (int(distance) <= self.minimal_distance): reward = reward - 10
         elif((self.type == "explorer" or self.type == "detective") and len(canny_edges) > 0):                   # reward for difference only if not too close distance
             edges_sum = 0
             for edges_row in canny_edges:
                 for edge in edges_row:
                     edges_sum += edge
+            # __2__ - Frame difference reward
             # calculate frame difference from the previous frame if not too small edges sum                # -> difference from some ammount of the PREVIOUS/  (previous+next - unable for realtime training)
             if(edges_sum > self.min_edges_sum_for_difference):
                 difference = cv2.absdiff(frame, last_frame).astype(np.uint8)
                 difference = round(100 - (np.count_nonzero(difference) * 100) / difference.size, 2)  # 0 to 15
                 reward += difference
-
+            # __3__ - Edges reward
             # Calculating edges count for higher reward for more edges
             edges_reward = edges_sum/self.edges_coefficient - self.edges_avg/self.edges_coefficient
-
             reward += edges_reward  # -> difference/different variable
+            # __4__ - Objects reward
+            # Reward for each object detected
+            for object in objects:
+                reward += self.object_reward
+                if(object[0] not in self.detected_objects):
+                    reward += self.new_object_reward
+                    self.detected_objects.append(object[0])
 
         return reward
 

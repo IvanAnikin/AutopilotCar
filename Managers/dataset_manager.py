@@ -62,6 +62,7 @@ class DatasetManager():
             last_frame = row[0]
             action = row[5]
             distance = row[7]
+            objects = row[8]
             resized, dim = self.preprocessManager.resized(last_frame)
 
             # create canny frame and contours
@@ -75,24 +76,28 @@ class DatasetManager():
             # calculating the reward
             reward = self.preprocessManager.reward_calculator(frame=last_frame,
                                                                last_frame=dataset[count - 1][self.frame_position],
-                                                               distance=distance, canny_edges=canny_edges)
+                                                               distance=distance, canny_edges=canny_edges, objects=objects)
 
-            new_row = np.array([last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance])
+            new_row = np.array([last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, objects])
             new_dataset.append(new_row)
             count += 1
 
         print(np.array(new_dataset).shape)
         return np.array(new_dataset)
 
-    def preprocess_datasets(self, new_directory="./Preprocessed/"):
+    def preprocess_datasets(self, new_directory="./Preprocessed/", name_base="f_s_e_b_c_a_r_d_o", visualise = False):
 
         files = [i for i in os.listdir(self.datasets_directory) if
-                 os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_a_d_new' in i]
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and name_base in i]
         for file_name in files:
             dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
+            self.preprocessManager.detected_objects = []
 
-            if not os.path.exists(new_directory + file_name): np.save(new_directory + file_name, self.dataset_preprocess(dataset=dataset))
-            else: raise FileExistsError('The file already exists')
+            #if not os.path.exists(new_directory + file_name): np.save(new_directory + file_name, self.dataset_preprocess(dataset=dataset))
+            #else: raise FileExistsError('The file already exists')
+            new = self.dataset_preprocess(dataset=dataset)
+            if visualise: print("detected_objects: {objects} | reward avg: {avg}".format(objects = self.preprocessManager.detected_objects, avg=np.round(np.average(new[:,6]),2)))
+            print()
 
 
     def visualise_dataset_numbers(self):
