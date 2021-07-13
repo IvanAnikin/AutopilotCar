@@ -3,33 +3,33 @@
 # Autonomous car driving using ML 
 
 
-# Main structure
+## Main structure
 ![](https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg)
 
-# Car
+## Car
 1. Arduino Mega
 2. ESP 32 camera and Wi-Fi module
 3. Ultrasonic distance sensor
 4. Wheels IR speed sensor - calculating exact distance
 5. 2 servos robotic arm - camera rotation
 
-# ML
+## ML
 
 Machine learning logics are written on Python using Tensorflow and Keras libraries for models operation and OpenCv for Computer Vision image preprocessing and objects detection.
 
-## Agents
+### Agents
 
-## DQN
+#### DQN
 This agent is created of two similar DQN models: target and q model
 
-### Models structure
-#### Inputs: 
+##### Models structure
+###### Inputs: 
 1. Resized video frame in all RGB colors
 2. BlackAndWhite thresholded image
 3. Canny edges frame 
 4. Distance
 
-#### Output:
+###### Output:
 - Q value for each of the actions (Left, Right, Forward)
 
 ![](https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork.png)
