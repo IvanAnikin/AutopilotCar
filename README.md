@@ -24,7 +24,7 @@ This agent is created of two similar DQN models: target and q model
 
 ######Output:
 Q value for each of the actions (Left, Right, Forward)
-![](https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork_[[0, 0, 1], [1, 1, 1, 1, 1]].png)
+![](https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork.png)
 
 
 ![](https://supercoolserver.azurewebsites.net/assets/img/arduino_car.jpg)
