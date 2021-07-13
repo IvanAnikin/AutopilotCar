@@ -6,6 +6,13 @@
 ## Main structure
 ![](https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg)
 
+## Car
+1. Arduino Mega
+2. ESP 32 camera and Wi-Fi module
+3. Ultrasonic distance sensor
+4. Wheels IR speed sensor - calculating exact distance
+5. 2 servos robotic arm - camera rotation
+
 ## ML
 
 Machine learning logics are written on Python using Tensorflow and Keras libraries for models operation and OpenCv for Computer Vision image preprocessing and objects detection.
