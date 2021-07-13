@@ -19,17 +19,17 @@ Machine learning logics are written on Python using Tensorflow and Keras librari
 
 ## Agents
 
-##DQN
+## DQN
 This agent is created of two similar DQN models: target and q model
 
-###Models structure
-Inputs: 
+### Models structure
+#### Inputs: 
 1. Resized video frame in all RGB colors
 2. BlackAndWhite thresholded image
 3. Canny edges frame 
 4. Distance
 
-Output:
+#### Output:
 - Q value for each of the actions (Left, Right, Forward)
 
 ![](https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork.png)
