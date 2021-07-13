@@ -5,7 +5,8 @@ import time
 
 class PreprocessManager():
     def __init__(self, contours_count = 5, minimal_distance = 15, type = "explorer", edges_avg = 120000, edges_max = 500000,
-                 edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10,  new_object_reward = 10):
+                 edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10,  new_object_reward = 10,
+                 dim=[[0, 0, 1],[1, 1, 1, 1, 1]], scale_percent=50):
         self.contours_count = contours_count
         self.minimal_distance = minimal_distance
         self.type = type
@@ -13,12 +14,14 @@ class PreprocessManager():
         self.edges_max = edges_max
         self.edges_coefficient = edges_coefficient
         self.min_edges_sum_for_difference = min_edges_sum_for_difference
-        self.model_path = "./CV_Models/"
+        self.model_path = "C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models"
         self.confidence_default = 0.5
         self.threshold_default = 0.3
         self.detected_objects = []
         self.new_object_reward = new_object_reward
         self.object_reward = object_reward
+        self.dim = dim
+        self.scale_percent = scale_percent
 
         # load the COCO class labels our YOLO model was trained on
         labelsPath = os.path.sep.join([self.model_path, "coco.names"])
@@ -36,10 +39,18 @@ class PreprocessManager():
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)    # grayscale frame
         return(cv2.Canny(frame_gray, 50, 100, 3))               # canny edges detection\
 
-    def resized(self, frame, scale_percent=50):
+    def blackAndWhite(self, frame):
+        resized, _ = self.resized(frame=frame)
+        # gray and black and wite frames
+        grayImage = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+        (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 127, 255, cv2.THRESH_BINARY)
+
+        return blackAndWhiteImage
+
+    def resized(self, frame):
         # reduce image size
-        width = int(frame.shape[1] * scale_percent / 100)
-        height = int(frame.shape[0] * scale_percent / 100)
+        width = int(frame.shape[1] * self.scale_percent / 100)
+        height = int(frame.shape[0] * self.scale_percent / 100)
         dim = (width, height)
         resized = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
 
@@ -70,6 +81,7 @@ class PreprocessManager():
     #   explorer: frame difference from others
     def reward_calculator(self, frame, last_frame, distance, canny_edges=[], objects=[]):
 
+        if canny_edges=="": canny_edges=self.canny_edges(frame=frame)
         reward = 0
         # __1__ - Punishment for too little distance
         if (int(distance) <= self.minimal_distance): reward = reward - 10
@@ -98,7 +110,7 @@ class PreprocessManager():
 
         return reward
 
-    def objects_detection(self, frame, visualise = False, scale_percent=50):
+    def objects_detection(self, frame, visualise = False):
 
         # load our YOLO object detector trained on COCO dataset (80 classes)
         # and determine only the *output* layer names that we need from YOLO
@@ -110,7 +122,7 @@ class PreprocessManager():
 
         objects_detected = []
         frame_start = time.time()
-        frame, dim = self.resized(frame=frame, scale_percent=scale_percent)
+        frame, dim = self.resized(frame=frame)
 
         # if the frame dimensions are empty, grab them
         if W is None or H is None:
@@ -188,3 +200,26 @@ class PreprocessManager():
             k = cv2.waitKey(1) & 0xff
 
         return objects_detected
+
+    def state_preprocess(self, frame, distance=0):
+
+        num_data = []
+        vid_data = []
+        state = []
+        if (self.dim[0][2] != 0): num_data.append(distance)
+
+        if (self.dim[1][0] != 0 or self.dim[1][1] != 0 or self.dim[1][2] != 0): resized,dim=self.resized(frame=frame)
+        if (self.dim[1][0] != 0): vid_data.append(resized[:, :, 0])
+        if (self.dim[1][1] != 0): vid_data.append(resized[:, :, 1])
+        if (self.dim[1][2] != 0): vid_data.append(resized[:, :, 2])
+        if (self.dim[1][3] != 0): vid_data.append(cv2.resize(self.canny_edges(frame=frame), dim, interpolation=cv2.INTER_AREA))
+        if (self.dim[1][4] != 0): vid_data.append(self.blackAndWhite(frame=frame))
+        bw = self.blackAndWhite(frame=frame)
+
+        if vid_data != []: vid_data = np.array([vid_data])
+        for num_element in num_data: state.append(np.array([num_element]))
+        state.append(vid_data)
+
+        if len(state) == 0: state = state[0]
+
+        return state

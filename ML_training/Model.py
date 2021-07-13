@@ -13,7 +13,8 @@ class DNN():
       c_dim = (1), a_dim = 3, d_dim = 3,
       width = 120, height = 160, depth = 2,
       output_size = 3, # forward, left, right
-      filters=(16, 32, 64)):
+      filters=(16, 32, 64),
+      critic=False):
     super().__init__()
 
     self.c_dim = c_dim
@@ -25,14 +26,14 @@ class DNN():
     self.output_size = output_size
     self.filters = filters
 
-    self.model = self.create_model()
+    self.model = self.create_model(critic)
     # compile the model using mean absolute percentage error as our loss,
     # implying that we seek to minimize the absolute percentage difference
     # between our price *predictions* and the *actual prices*
     opt = Adam(lr=1e-3, decay=1e-3 / 200)
-    self.model.compile(loss="mean_absolute_percentage_error", optimizer=opt)
+    if not critic: self.model.compile(loss="mean_absolute_percentage_error", optimizer=opt)
 
-  def create_model(self):
+  def create_model(self, critic=False):
 
     models = [] # [mlp, cnn]
     if(self.numdata_not_empty()): models.append(self.create_mlp(regress=False))
@@ -42,13 +43,16 @@ class DNN():
       combinedInput = concatenate([models[0].output, models[1].output])
 
       x = Dense(4, activation="relu")(combinedInput)
-      x = Dense(self.output_size, activation="linear")(x)
+      actor = Dense(self.output_size, activation="linear")(x)
 
-      model = Model(inputs=[models[0].input, models[1].input], outputs=x)
+      if critic:
+        critic = Dense(1)(x)
+        model = Model(inputs=[models[0].input, models[1].input], outputs=[actor, critic])
+      else: model = Model(inputs=[models[0].input, models[1].input], outputs=actor)
 
     elif(len(models) == 1):
-      x = Dense(self.output_size, activation="linear")(models[0].output)
-      model = Model(inputs=[models[0].input], outputs=x)
+      actor = Dense(self.output_size, activation="linear")(models[0].output)
+      model = Model(inputs=[models[0].input], outputs=actor)
 
     else: raise ValueError('Model input data must not be empty')
 

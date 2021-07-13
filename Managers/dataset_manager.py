@@ -26,7 +26,7 @@ class DatasetManager():
         self.distance = 2
         self.reward = 3
         self.type = type
-        self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type)
+        self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type, scale_percent=50)
         self.datasets_vis_string = "{4} \n Actions: \n \t average: {0} \n \t sum: {1} \n Distances: \n \t average: {2} \n \t sum: {3} \n Len: {5} \n"
 
     def save_data(self, data):
@@ -48,7 +48,7 @@ class DatasetManager():
                 dataset_name += self.dataset_name_letters[count]
             count += 1
 
-        dataset_name += ("_" + subname)
+        if(subname!=""): dataset_name += ("_" + subname)
 
         return dataset_name
 
@@ -93,24 +93,21 @@ class DatasetManager():
             dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
             self.preprocessManager.detected_objects = []
 
-            #if not os.path.exists(new_directory + file_name): np.save(new_directory + file_name, self.dataset_preprocess(dataset=dataset))
-            #else: raise FileExistsError('The file already exists')
+            if not os.path.exists(new_directory + file_name): np.save(new_directory + file_name, self.dataset_preprocess(dataset=dataset))
+            else: raise FileExistsError('The file already exists')
             new = self.dataset_preprocess(dataset=dataset)
             if visualise: print("detected_objects: {objects} | reward avg: {avg}".format(objects = self.preprocessManager.detected_objects, avg=np.round(np.average(new[:,6]),2)))
             print()
 
 
-    def visualise_dataset_numbers(self):
+    def visualise_datasets_numbers(self, name_base="f_s_e_b_c_a_r_d_o"):
+        print("Directory: {dir}".format(dir=self.datasets_directory))
+        files = [i for i in os.listdir(self.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and name_base in i]
+        for file_name in files:
+            dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
 
-        dataset = np.load(self.datasets_directory + '/' + self.dataset_name + '.npy', allow_pickle=True)
-        rewards = []
-
-        for row in dataset:
-            rewards.append(row[6])
-
-        print("Average reward: ", np.average(rewards))
-        contours = row[4]
-        print("One row contour shape: ", dataset[0][4].shape())
+            print("Average reward: {avg} | Dataset name: {name}".format(name=file_name, avg=np.round(np.average(dataset[:,6]),2)))
 
     def visualise_contours(self, frame, contours, canny_edges):
 
@@ -357,7 +354,7 @@ class DatasetManager():
 
             count = 0
             for row in dataset:
-                objects_detected = self.preprocessManager.objects_detection(row[0], visualise=False, scale_percent=50)
+                objects_detected = self.preprocessManager.objects_detection(row[0], visualise=False)
 
                 last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance = row
 
@@ -371,6 +368,7 @@ class DatasetManager():
             print("New dataset shape: {shape}".format(shape = np.array(new_dataset).shape))
             if not os.path.exists(self.datasets_directory + "/with_objects/" + file_name): np.save(self.datasets_directory + "/with_objects/" + file_name, np.array(new_dataset))
             else: raise FileExistsError('The file already exists')
+
 
 # Dataset type:
 
@@ -388,4 +386,4 @@ class DatasetManager():
 # Dataset versions:
 
 # 710e9e3   -- lower than min distance punishment, frames difference if edges exist, reward for count of canny edges
-#           -- + reward for new object
+# 673243b   -- + reward for object and new object
