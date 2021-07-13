@@ -7,7 +7,7 @@
 ![](https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg)
 
 ## Car
-###Hardware structure
+### Hardware structure
 1. Arduino Mega
 2. ESP 32 camera and Wi-Fi module
 3. Ultrasonic distance sensor
