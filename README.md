@@ -19,6 +19,17 @@ You can find the code of the Arduino car [here](https://github.com/IvanAnikin/Au
 
 Machine learning logics are written on Python using Tensorflow and Keras libraries for models operation and OpenCv for Computer Vision image preprocessing and objects detection.
 
+### Types
+Type of the model is defined by rewards the model was given to specify purpose of actions
+
+#### Explorer
+This type is focused on exploring as bigger territory as possible. 
+Positive reward was given for image frames difference and new objects detected. And negative for getting too close to some obstacle.
+
+#### Detective
+The model was trained in a same way as the explorer with an addittion of searching for a specific object in frames. Searching is made by looking for similar hotpoints with ones in a folder with example images of the wanted objects.
+![](https://supercoolserver.azurewebsites.net/assets/img/ml_car_detective.jpg)
+
 ### Agents
 
 #### DQN
