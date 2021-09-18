@@ -17,7 +17,7 @@ type = "explorer"
 
 preprocess = False
 visualise = True
-dataset_type = [1, 1, 1, 1, 1, 1, 1, 1]
+dataset_type = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 #if(preprocess):
 #    dataset_type = [1, 0, 1, 0, 1, 1, 1, 1] # - frame, canny, edges, action, reward, distance
 #else:
@@ -59,28 +59,35 @@ while True:
         if k == 27: break
 
         if(len(received) < 6):
+
             distance = received.strip('\r\n')  #line, buffer = received.split('\n', 1)
             if(distance != ''):
                 dataset = []
-                row = np.empty([len(dataset_type)])
+                #row = np.empty([len(dataset_type)])
+                row = []
                 canny_edges = []
                 print("distance: '" + str(distance)  + "'")
                 distance = int(distance)
 
                 if(dataset_type[1]): resized, dim = preprocessManager.resized(frame=frame)
+                if (dataset_type[3]):
+                    blackAndWhite = datasetManager.preprocessManager.blackAndWhite(frame=frame)
                 if(dataset_type[4]):
                     canny_edges, contours = preprocessManager.canny_and_contours(frame=frame)
                     if (visualise): datasetManager.visualise_contours(frame=frame, contours=contours, canny_edges=canny_edges)
                 elif(dataset_type[2]):
                     canny_edges = preprocessManager.canny_edges(frame=frame)
                     cv2.imshow('canny_edges', canny_edges)
+                objects = []
+                if type == "explorer": objects = datasetManager.preprocessManager.objects_detection(frame=frame)
 
                 if(dataset_type[6] and "last_frame" in locals()): reward = preprocessManager.reward_calculator(frame=frame, last_frame=last_frame, distance=distance, canny_edges=canny_edges)
                 # SAVE to dataset --> later change --> [ X={lastframes - classical, edges …}{contours, (detected objects)}, Y=action, reward ]
                 if("action" in locals()):
                     count = 0
                     for dataset_type_row in dataset_type:
-                        if(dataset_type_row): row[count] = globals()[datasetManager.dataset_vars[count]]
+                        if(dataset_type_row): row.append(globals()[datasetManager.dataset_vars[count]]) #row[count] = globals()[datasetManager.dataset_vars[count]]
+                        else: row.append(None)
                         count += 1
                     dataset.append(row)
                     datasetManager.save_data(np.array(dataset))

@@ -2,10 +2,11 @@ import cv2
 import numpy as np
 import os
 import time
+from termcolor import colored
 
 class PreprocessManager():
     def __init__(self, contours_count = 5, minimal_distance = 15, type = "explorer", edges_avg = 120000, edges_max = 500000,
-                 edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10,  new_object_reward = 10,
+                 edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10, wanted_object_reward = 10,   new_object_reward = 10,
                  dim=[[0, 0, 1],[1, 1, 1, 1, 1]], scale_percent=50):
         self.contours_count = contours_count
         self.minimal_distance = minimal_distance
@@ -20,6 +21,7 @@ class PreprocessManager():
         self.detected_objects = []
         self.new_object_reward = new_object_reward
         self.object_reward = object_reward
+        self.wanted_object_reward = wanted_object_reward
         self.dim = dim
         self.scale_percent = scale_percent
 
@@ -79,9 +81,9 @@ class PreprocessManager():
     # Dependencies:
     #   common: distance    - too close = -10                                                                   # -> Other proportions of dependencies
     #   explorer: frame difference from others
-    def reward_calculator(self, frame, last_frame, distance, canny_edges=[], objects=[]):
+    def reward_calculator(self, frame, last_frame, distance, canny_edges=[], objects=[], object_found=False):
 
-        if canny_edges=="": canny_edges=self.canny_edges(frame=frame)
+        if canny_edges==[]: canny_edges=self.canny_edges(frame=frame)
         reward = 0
         # __1__ - Punishment for too little distance
         if (int(distance) <= self.minimal_distance): reward = reward - 10
@@ -107,6 +109,8 @@ class PreprocessManager():
                 if(object[0] not in self.detected_objects):
                     reward += self.new_object_reward
                     self.detected_objects.append(object[0])
+            # __5__ - Reward for finding object it was looking for
+            reward+=self.wanted_object_reward
 
         return reward
 
@@ -197,6 +201,8 @@ class PreprocessManager():
             print("Frame timestep: {timestep} | net.forward timestep: {net_timestep} | Objects detected: {objects} | (W, H): ({W}, {H})".format(
                     timestep=np.round(time.time() - frame_start, 2), objects=objects_detected, W=W, H=H, net_timestep=end-start))
             cv2.imshow('frame after detection', frame)
+            print()
+            print(colored("Object found",'blue'))
             k = cv2.waitKey(1) & 0xff
 
         return objects_detected
@@ -214,7 +220,6 @@ class PreprocessManager():
         if (self.dim[1][2] != 0): vid_data.append(resized[:, :, 2])
         if (self.dim[1][3] != 0): vid_data.append(cv2.resize(self.canny_edges(frame=frame), dim, interpolation=cv2.INTER_AREA))
         if (self.dim[1][4] != 0): vid_data.append(self.blackAndWhite(frame=frame))
-        bw = self.blackAndWhite(frame=frame)
 
         if vid_data != []: vid_data = np.array([vid_data])
         for num_element in num_data: state.append(np.array([num_element]))

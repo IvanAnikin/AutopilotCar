@@ -12,7 +12,7 @@ import matplotlib.cm as cm
 
 from PIL import Image
 
-from object_detection import finding_object, object_detection
+from object_detection import object_detection
 
 
 # Video Stream:
@@ -27,7 +27,7 @@ if(video_source == "Ip Esp32 Stream"):
 # From CAMERA
 if (video_source == "Webcam"):
 
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     ok, frame = cap.read()
 
 if (video_source == "Ip Esp32 Stream"):
@@ -60,7 +60,7 @@ while True:
 
     if(process_type == "Object detection"):
         # Get number of SIFT matches
-        new_frame, object_found, object = finding_object(frame, 15, count, object)
+        new_frame, object_found, object = object.finding_object(frame, 15, count, object)
         if object_found:
             cv2.putText(new_frame, 'Object Found', (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2)
 

@@ -1,17 +1,19 @@
+
 import cv2
 import numpy as np
 import os
 
-class object_detection():
+class CV_Manager():
 
-    def __init__(self, name = 'helmet'):
+    def __init__(self, name = 'helmet', threshold=0.8):
         self.name = name
         self.good = []
         self.keypoints_1 = []
         self.keypoints_2 = []
-        self.images_directory = './src/img/'
+        self.images_directory = '../src/img/'
         self.ending = '.jpg'
         self.image_template = cv2.imread(self.images_directory + self.name + self.ending)
+        self.threshold = threshold
 
         files = [i for i in os.listdir(self.images_directory) if
                  os.path.isfile(os.path.join(self.images_directory, i)) and name in i]
@@ -20,8 +22,22 @@ class object_detection():
         for file_name in files:
             self.image_templates.append(cv2.imread(self.images_directory + file_name))
 
+    def find_object_2(self, frame):
+        object_found = False
+        img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        template = self.image_template
+        template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        w, h = template_gray.shape
+        res = cv2.matchTemplate(img_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+        threshold = 0.8
+        loc = np.where(res >= threshold)
+        for pt in zip(*loc[::-1]):
+            cv2.rectangle(frame, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+            object_found=True
+        return frame, object_found
 
-    def finding_object(self, new_image, MIN_MATCH_COUNT=15, count=0):
+
+    def find_object(self, new_image, MIN_MATCH_COUNT=15, count=0):
 
         for image_template in self.image_templates:
             if(count == 0):
@@ -58,9 +74,9 @@ class object_detection():
             object_found = False
             new_frame = new_image.copy()
 
-            if len(object.good) > MIN_MATCH_COUNT:
-                src_pts = np.float32([object.keypoints_1[m.queryIdx].pt for m in object.good]).reshape(-1, 1, 2)
-                dst_pts = np.float32([object.keypoints_2[m.trainIdx].pt for m in object.good]).reshape(-1, 1, 2)
+            if len(self.good) > MIN_MATCH_COUNT:
+                src_pts = np.float32([self.keypoints_1[m.queryIdx].pt for m in self.good]).reshape(-1, 1, 2)
+                dst_pts = np.float32([self.keypoints_2[m.trainIdx].pt for m in self.good]).reshape(-1, 1, 2)
 
                 M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
                 matchesMask = mask.ravel().tolist()
@@ -70,55 +86,10 @@ class object_detection():
                                    matchesMask=matchesMask,  # draw only inliers
                                    flags=2)
 
-                new_frame = cv2.drawMatches(new_frame, object.keypoints_1, image_template, object.keypoints_2, object.good, None, **draw_params)
+                new_frame = cv2.drawMatches(new_frame, self.keypoints_1, image_template, self.keypoints_2, self.good, None, **draw_params)
 
                 object_found = True
 
-                return new_frame, object_found, object
+                return new_frame, object_found
 
-        return new_frame, object_found, object
-
-
-host = "192.168.1.159"  # ESP32 IP in local network
-port = 80  # ESP32 Server Port
-stream_port = 81
-
-# Video Stream:
-video_source = "Ip Esp32 Stream" #"Ip Esp32 Stream" # Webcam
-
-# From CAMERA
-if (video_source == "Webcam"):
-
-    cap = cv2.VideoCapture(1)
-    ok, frame = cap.read()
-
-if (video_source == "Ip Esp32 Stream"):
-
-    cap = cv2.VideoCapture('http://' + host + ':' + str(stream_port) + '/stream')
-    ok, frame = cap.read()
-    print("Reading video stream from " + 'http://' + host + ':' + str(stream_port) + '/stream' + " - OK")
-
-count = 0
-object_found = False
-object = object_detection(name='helmet')
-while True:
-
-    ret, frame = cap.read()
-
-    height, width = frame.shape[:2]
-
-    # Get number of SIFT matches
-    new_frame, object_found, object = object.finding_object(frame, 10, count)
-    if object_found:
-        cv2.putText(new_frame ,'Object Found' ,(50 ,50), cv2.FONT_HERSHEY_COMPLEX, 2 ,(0, 255, 0), 2)
-
-    cv2.imshow('Object Detector using SIFT', new_frame)
-
-    if cv2.waitKey(1) == 13:  # 13 is the Enter Key
-        break
-
-    count +=1
-    if(count==10): count=0
-
-cap.release()
-cv2.destroyAllWindows()
+        return new_frame, object_found

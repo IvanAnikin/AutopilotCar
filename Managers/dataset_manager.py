@@ -9,11 +9,12 @@ from Managers import preporcess_manager
 
 class DatasetManager():
     def __init__(self, dataset_type = [1, 1, 1, 1, 1, 1, 1, 1, 1], subname="", data=[], save_every = 5, step_from_saving = 0, minimal_distance = 15,
-                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3"):   #"../Datasets" #/Normalised brightness
+                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3", dim=[[0, 0, 1],[1, 1, 1, 1, 1]]):   #"../Datasets" #/Normalised brightness
+
         self.save_every = save_every
         self.step_from_saving = step_from_saving
         self.dataset_name_letters = ["f", "s", "e", "b", "c", "a", "r", "d", "o"]
-        self.dataset_vars = ["last_frame", "resized", "canny_edges", "blackAndWhite", "contours", "action", "reward", "distance", "Detected objects"]
+        self.dataset_vars = ["last_frame", "resized", "canny_edges", "blackAndWhite", "contours", "action", "reward", "distance", "objects"]
         self.dataset_type = dataset_type
         self.datasets_directory = datasets_directory
         self.dataset_name = self.dataset_name_from_type(dataset_type, subname=subname)
@@ -26,7 +27,10 @@ class DatasetManager():
         self.distance = 2
         self.reward = 3
         self.type = type
-        self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type, scale_percent=50)
+        self.dim = dim
+        self.visualisation_type = dataset_type
+
+        self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type, scale_percent=50, dim=dim)
         self.datasets_vis_string = "{4} \n Actions: \n \t average: {0} \n \t sum: {1} \n Distances: \n \t average: {2} \n \t sum: {3} \n Len: {5} \n"
 
     def save_data(self, data):
@@ -124,51 +128,61 @@ class DatasetManager():
         cv2.imshow('canny_edges', canny_edges)
         cv2.imshow('with_contours', with_contours)
 
+    def visualise_row(self, row=[], count=None):
+        if (self.dataset_type[0]):
+            frame = row[0]
+        elif (self.dataset_type[1]):
+            frame = row[1]
+        elif (self.visualisation_type[2]):
+            frame = row[2]
+        elif (self.visualisation_type[3]):
+            frame = row[3]
+        if (self.dataset_type[1]):
+            if (self.dataset_type[8]):
+                for id, box in row[8]:
+                    # extract the bounding box coordinates
+                    (x, y) = (box[0], box[1])
+                    (w, h) = (box[2], box[3])
+                    # draw a bounding box rectangle and label on the frame
+                    color = [int(c) for c in self.preprocessManager.COLORS[id]]
+                    cv2.rectangle(row[1], (x, y), (x + w, y + h), color, 2)
+                    text = "{}".format(self.preprocessManager.LABELS[id])
+                    cv2.putText(row[1], text, (x, y - 5),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            cv2.imshow('resized', row[1])
+        if (self.visualisation_type[2]): cv2.imshow('canny_edges', row[2])
+        if (self.visualisation_type[3]): cv2.imshow('blackAndWhite', row[3])
+        if (self.dataset_type[4]):
+            try:
+                with_contours = frame.copy()
+                for c in row[4]:
+                    rows, cols = frame.shape[:2]
+                    [vx, vy, x, y] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
+                    lefty = int((-x * vy / vx) + y)
+                    righty = int(((cols - x) * vy / vx) + y)
+                    cv2.line(with_contours, (cols - 1, righty), (0, lefty), (0, 255, 0), 2)
+                cv2.imshow('with_contours', with_contours)
+            except:
+                pass
+        if ("frame" in locals()):
+            if (self.dataset_type[5]): cv2.putText(frame, 'Action: ' + str(row[5]), (10, 50), cv2.FONT_HERSHEY_COMPLEX,
+                                                   0.5, (0, 255, 0), 2)
+            if (self.dataset_type[7]): cv2.putText(frame, 'Distance: ' + str(row[7]), (10, 100),
+                                                   cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
+            if (self.dataset_type[6]): cv2.putText(frame, 'Reward: ' + str(row[6]), (10, 150), cv2.FONT_HERSHEY_COMPLEX,
+                                                   0.5, (0, 255, 0), 2)
+            if(count!=None): cv2.putText(frame, 'Count: ' + str(count), (10, 200), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.imshow('frame,', row[0])
+
+
     def visualise_dataset(self, dataset = []):
 
         if dataset==[]: dataset = np.load(self.dataset_name_full, allow_pickle=True)
         count = 0
         for row in dataset:
-
-            if(self.dataset_type[0]): frame = row[0]
-            elif(self.dataset_type[1]):frame = row[1]
-            elif(self.dataset_type[2]):frame = row[2]
-            elif(self.dataset_type[3]):frame = row[3]
-            if (self.dataset_type[1]):
-                if (self.dataset_type[8]):
-                    for id,box in row[8]:
-                        # extract the bounding box coordinates
-                        (x, y) = (box[0], box[1])
-                        (w, h) = (box[2], box[3])
-                        # draw a bounding box rectangle and label on the frame
-                        color = [int(c) for c in self.preprocessManager.COLORS[id]]
-                        cv2.rectangle(row[1], (x, y), (x + w, y + h), color, 2)
-                        text = "{}".format(self.preprocessManager.LABELS[id])
-                        cv2.putText(row[1], text, (x, y - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                cv2.imshow('resized', row[1])
-            if (self.dataset_type[2]): cv2.imshow('canny_edges', row[2])
-            if (self.dataset_type[3]): cv2.imshow('blackAndWhite', row[3])
-            if(self.dataset_type[4]):
-                try:
-                    with_contours = frame.copy()
-                    for c in row[4]:
-                        rows, cols = frame.shape[:2]
-                        [vx, vy, x, y] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
-                        lefty = int((-x * vy / vx) + y)
-                        righty = int(((cols - x) * vy / vx) + y)
-                        cv2.line(with_contours, (cols - 1, righty), (0, lefty), (0, 255, 0), 2)
-                    cv2.imshow('with_contours', with_contours)
-                except:
-                    pass
-            if("frame" in locals()):
-                if(self.dataset_type[5]): cv2.putText(frame, 'Action: ' + str(row[5]), (10, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
-                if(self.dataset_type[7]): cv2.putText(frame, 'Distance: ' + str(row[7]), (10, 100), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
-                if(self.dataset_type[6]): cv2.putText(frame, 'Reward: ' + str(row[6]), (10, 150), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
-                cv2.putText(frame, 'Count: ' + str(count), (10, 200), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
-                cv2.imshow('frame,', row[0])
+            row = row[count]
+            self.visualise_row(row=row, count=count)
             count+=1
-
             k = cv2.waitKey(500) & 0xff
             if k == 27:
                 break
@@ -374,14 +388,14 @@ class DatasetManager():
 
 # f_r_c_e_g_t_b_a_r_d_o
 # 0 - frame		    - f     - not use   for training
-# 1 - resized		- s     - (use)     for training    - doesn't work
-# 2 - canny_edges	- e     - (use)     for training    - works
+# 1 - resized		- s     - use       for training    - works
+# 2 - canny_edges	- e     - use       for training    - works
 # 3 - blackAndWhite	- b     - use       for training    - works
 # 4 - contours		- c     - use       for training    - doesn't work
-# 5 - action		- a     - use       for training    - doesn't work
-# 6 - reward		- r     - use       for training    - doesn't work
-# 7 - distance		- d     - (use)     for training    - works
-# 8 - objects       - o     - (use)     for training
+# 5 - action		- a     - (use)     for training    - doesn't work
+# 6 - reward		- r     - not use   for training
+# 7 - distance		- d     - use       for training    - works
+# 8 - objects       - o     - use       for training    - works
 
 # Dataset versions:
 

@@ -17,15 +17,16 @@ import ML_training.Model as Models
 
 
 class Actor_Critic():
-
+    #https://keras.io/examples/rl/actor_critic_cartpole/
     def __init__(
             self,
             state_size, actions, optimizer, models_directory, load_model, model_name="Actor_Critic",
-            model_subname=""):
+            model_subname="", minimal_distance=20):
         """Initialize."""
         super().__init__()
 
         # Initialize atributes
+        self.minimal_distance = minimal_distance
         self._state_size = state_size
         self._action_size = len(actions)
         self.actions = actions
@@ -46,7 +47,7 @@ class Actor_Critic():
         # Initialize discount and exploration rate
         self.gamma = 0.6
         self.epsilon = 0.1
-        dir = "{directory}/Trained/673243b/All/"
+        dir = "{directory}/Trained/673243b/All/Actor_Critic/"
         if model_subname != "": dir += "{subname}/"
         dir+="{name}.h5"
         model_full_path=dir.format(directory=models_directory, name=model_name, subname=model_subname)
@@ -63,10 +64,16 @@ class Actor_Critic():
         if load_model and os.path.exists(model_full_path):
             self.model.load_weights(model_full_path)
             print("Weights loaded | {path}".format(path=model_full_path))
+        elif not os.path.exists(model_full_path): print(f"Couldn't find any model with path '{model_full_path}'")
 
-    def act(self, state):
+    def act(self, state, distance):
 
-        return self.model(state)
+        if(distance==None):
+            return self.model(state)
+        elif(distance<self.minimal_distance):
+            return 2 #left
+        else:
+            return self.model(state)
 
     def store(self, critic_value, action_probs, action, reward):
         self.critic_value_history.append(critic_value[0, 0])
@@ -86,51 +93,40 @@ class Actor_Critic():
         self.model.summary()
         plot_model(model=self.model, to_file="{directory}/img/Actor_Critic/{name}_{subname}.png".format(directory=self.models_directory, name=self.model_name, subname=self.model_subname), show_shapes=True)
 
-    def retrain(self):
-        with tf.GradientTape() as tape:
-            # Calculate expected value from rewards
-            # - At each timestep what was the total reward received after that timestep
-            # - Rewards in the past are discounted by multiplying them with gamma
-            # - These are the labels for our critic
-            returns = []
-            discounted_sum = 0
-            for r in self.rewards_history[::-1]:
-                discounted_sum = r + self.gamma * discounted_sum
-                returns.insert(0, discounted_sum)
+    def retrain(self, tape):
+        # Calculate expected value from rewards
+        returns = []
+        discounted_sum = 0
+        for r in self.rewards_history[::-1]:
+            discounted_sum = r + self.gamma * discounted_sum
+            returns.insert(0, discounted_sum)
 
-            # Normalize
-            returns = np.array(returns)
-            returns = (returns - np.mean(returns)) / (np.std(returns) + self.eps)
-            returns = returns.tolist()
+        # Normalize
+        returns = np.array(returns)
+        returns = (returns - np.mean(returns)) / (np.std(returns) + self.eps)
+        returns = returns.tolist()
 
-            # Calculating loss values to update our network
-            history = zip(self.action_probs_history, self.critic_value_history, returns)
-            actor_losses = []
-            critic_losses = []
-            for log_prob, value, ret in history:
-                # At this point in history, the critic estimated that we would get a
-                # total reward = `value` in the future. We took an action with log probability
-                # of `log_prob` and ended up recieving a total reward = `ret`.
-                # The actor must be updated so that it predicts an action that leads to
-                # high rewards (compared to critic's estimate) with high probability.
-                diff = ret - value
-                actor_losses.append(-log_prob * diff)  # actor loss
+        # Calculating loss values to update our network
+        history = zip(self.action_probs_history, self.critic_value_history, returns)
+        actor_losses = []
+        critic_losses = []
+        for log_prob, value, ret in history:
+            diff = ret - value
+            actor_losses.append(-log_prob * diff)
 
-                # The critic must be updated so that it predicts a better estimate of
-                # the future rewards.
-                critic_losses.append(
-                    self.huber_loss(tf.expand_dims(value, 0), tf.expand_dims(ret, 0))
-                )
+            critic_losses.append(
+                self.huber_loss(tf.expand_dims(value, 0), tf.expand_dims(ret, 0))
+            )
 
-            # Backpropagation
-            loss_value = sum(actor_losses) + sum(critic_losses)
-            grads = tape.gradient(loss_value, self.model.trainable_variables)
-            self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+        # Backpropagation
+        loss_value = sum(actor_losses) + sum(critic_losses)
+        grads = tape.gradient(loss_value, self.model.trainable_variables)
+        self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-            # Clear the loss and reward history
-            self.action_probs_history.clear()
-            self.critic_value_history.clear()
-            self.rewards_history.clear()
+        # Clear the loss and reward history
+        self.action_probs_history.clear()
+        self.critic_value_history.clear()
+        self.rewards_history.clear()
 
 
 class DQN():

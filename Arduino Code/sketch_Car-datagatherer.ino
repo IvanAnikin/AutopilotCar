@@ -2,7 +2,7 @@
 #include <SoftwareSerial.h>
 #include <Servo.h>
 
-SoftwareSerial mySerial(10, 11); // RX, TX
+SoftwareSerial mySerial(10, 11); // RX, TX - parners
 
 Servo servo_lower;
 Servo servo_upper;
@@ -11,6 +11,8 @@ Servo servo_upper;
 float Speed = 255;  // out of 255 max
 int forwardStep = 20;
 int rotationStep = 20;
+int smallForwardStep = 10;
+int smallRotationStep = 10;
 String message;
 int movement;
 
@@ -30,7 +32,7 @@ int pos_upper = 130; //min_upper
 #define echo 5
 int distance = 0;
 long previousMillis = 0;
-long command_max_interval = 5000; 
+long command_max_interval = 5000;
 
 // Motors sensors
 int left_intr = 0;
@@ -64,7 +66,7 @@ int en2 = 7;
 
 void setup() {
   Serial.begin(9600);     // Serial communication using cable
-  mySerial.begin(9600); // Serial communication with esp32 module
+  mySerial.begin(9600);   // Serial communication with esp32 module
 
   // WHEELS PINS
   pinMode(in1, OUTPUT);
@@ -80,8 +82,8 @@ void setup() {
   servo_lower.attach(servo_lower_pin);
   servo_upper.attach(servo_upper_pin);
 
-  servo_upper.write(pos_upper);    
-  servo_lower.write(pos_lower); 
+  servo_upper.write(pos_upper);
+  servo_lower.write(pos_lower);
 
   // DISTANCE PINS
   pinMode(trig, OUTPUT); // Sets the trigPin as an OUTPUT
@@ -89,46 +91,65 @@ void setup() {
 
   // Motors sensors setup
   rotation = rpm = pevtime = 0; //Initialize all variable to zero
-  attachInterrupt(digitalPinToInterrupt(2), Left_ISR, CHANGE); //Left_ISR is called when left wheel sensor is triggered 
-  attachInterrupt(digitalPinToInterrupt(3), Right_ISR, CHANGE);//Right_ISR is called when right wheel sensor is triggered 
+  attachInterrupt(digitalPinToInterrupt(2), Left_ISR, CHANGE); //Left_ISR is called when left wheel sensor is triggered
+  attachInterrupt(digitalPinToInterrupt(3), Right_ISR, CHANGE);//Right_ISR is called when right wheel sensor is triggered
+
+  Serial.println("Setup ended");
 }
 
 void loop() {
-  
+  //distance = getDistance();
+  //Serial.println("Distance: " + String(distance));
+  //mySerial.println(String(distance));
+  //delay(500);
   if(mySerial.available()){
     message = mySerial.readStringUntil('\n'); // Message format: "*" - data type, ":", "*n" - n-th count of data (movement: 1)
-    Serial.println(message); 
+    Serial.println(message);
     if(message.substring(0, 1) == "M"){       // // "M" MOVEMENT: data count: 1 {0,1,2,3} - {forward, backward, left, right}
       movement = message.substring(2,3).toInt();
-      
-      if(movement == 0) Go_d();
+
+      if(movement == 0) Go_d(forwardStep);
       //if(movement == 1) Back();
-      if(movement == 2) Left_d();
-      if(movement == 3) Right_d();
-      
+      if(movement == 2) Left_d(rotationStep);
+      if(movement == 3) Right_d(rotationStep);
+
       delay(100);
       Stop();
     }
     if(message.substring(0, 1) == "S"){       // "S" SERVOS: data count: 1 {0,1,2,3,4} - {up, down, left, right, default}
       movement = message.substring(2,3).toInt();
-      
+
       if(movement == 0) pos_upper += 10;
       if(movement == 1) pos_upper -= 10;
       if(movement == 2) pos_lower += 10;
       if(movement == 3) pos_lower -= 10;
       if(movement == 4) ServosDefault();
-      
-      servo_upper.write(pos_upper);    
-      servo_lower.write(pos_lower); 
+
+      servo_upper.write(pos_upper);
+      servo_lower.write(pos_lower);
     }
+    if(message.substring(0, 1) == "H"){       // // "H" HALF-STEP: data count: 1 {0,1,2,3} - {forward, backward, left, right}
+      movement = message.substring(2,3).toInt();
+
+      if(movement == 0) Go_d(smallForwardStep);
+      //if(movement == 1) Back();
+      if(movement == 2) Left_d(smallRotationStep);
+      if(movement == 3) Right_d(smallRotationStep);
+
+      delay(100);
+      Stop();
+    }
+
+
     // "R" SPEED: data count: 1 {0,1,2,3} - {slowest->fastest}
 
     // Send distance through Esp32 module to computer after finishing the command
     distance = getDistance();
+    Serial.println("Distance: " + String(distance));
     mySerial.println(String(distance));
-    Serial.println(distance); 
+    //Serial.println(distance);
   }
-  
+
   // Motors sensors
   /*To drop to zero if vehicle stopped*/
   if(millis()-dtime>500) //no inetrrupt found for 500ms
@@ -136,7 +157,7 @@ void loop() {
     rpm = v = 0; // make rpm and velocity as zero
     dtime = millis();
   }
-  
+
   delay(100); // 30/50
 }
 
@@ -151,12 +172,12 @@ void Left_ISR()
 void Right_ISR()
 {
   right_intr++; delay(10);
-  
+
   rotation++;
   dtime=millis();
   if(rotation>=40)
   {
-    timetaken = millis()-pevtime; //timetaken in millisec 
+    timetaken = millis()-pevtime; //timetaken in millisec
     rpm=(1000/timetaken)*60;    //formulae to calculate rpm
     pevtime = millis();
     rotation=0;
@@ -165,14 +186,13 @@ void Right_ISR()
 int getDistance(){
   digitalWrite(trig, LOW);
   delayMicroseconds(2);
-  
+
   digitalWrite(trig, HIGH);
   delayMicroseconds(10);
   digitalWrite(trig, LOW);
-  
+
   distance = pulseIn(echo, HIGH);
   distance = distance / 58;
-  //Serial.println(distance); 
 
   return distance;
 }
@@ -180,8 +200,8 @@ int getDistance(){
 void ServosDefault(){
   pos_lower = 70;
   pos_upper = min_upper;
-  servo_upper.write(pos_upper);    
-  servo_lower.write(pos_lower); 
+  servo_upper.write(pos_upper);
+  servo_lower.write(pos_lower);
 }
 void Go(){
   digitalWrite(in1, LOW);
@@ -215,8 +235,8 @@ void Stop(){
   digitalWrite(in3, LOW);
   digitalWrite(in4, LOW);
 }
-void Go_d(){ 
-  wheels_position += forwardStep;
+void Go_d(int step){
+  wheels_position += step;
   left_smaller = right_smaller = true;
   previousMillis = millis();
   while((left_smaller or right_smaller) and (millis() - previousMillis < command_max_interval)){
@@ -244,8 +264,8 @@ void Go_d(){
   }
   Serial.println("Go done");
 }
-void Right_d(){
-  wheels_position += rotationStep;
+void Right_d(int step){
+  wheels_position += step;
   left_smaller = right_smaller = true;
   previousMillis = millis();
   while((left_smaller or right_smaller) and (millis() - previousMillis < command_max_interval)){
@@ -273,8 +293,8 @@ void Right_d(){
   }
   Serial.println("Right done");
 }
-void Left_d(){
-  wheels_position += rotationStep;
+void Left_d(int step){
+  wheels_position += step;
   left_smaller = right_smaller = true;
   previousMillis = millis();
   while((left_smaller or right_smaller) and (millis() - previousMillis < command_max_interval)){
