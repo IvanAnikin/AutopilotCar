@@ -35,7 +35,7 @@ This type is different in it's base, because the action decision, doesn't come f
   - Looking for a face in the frame from car and moving to the direction of the face movement
   - Choosing a specific object and moving to the direction of the object movement
   - The following was made with webcam movement only or with the movement of the whole car, using wheels motors rotation 
-  ![follower gif](https://supercoolserver.azurewebsites.net/assets/img/ml_car_face_following.gif)
+  <img src="https://supercoolserver.azurewebsites.net/assets/img/ml_car_face_following.gif" height="250"/>
 
 ### Agents
 
