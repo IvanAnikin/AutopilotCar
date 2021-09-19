@@ -20,6 +20,7 @@ Machine learning logics are written on Python using Tensorflow and Keras librari
 
 ### Input preprocessing
 I process the input image from the car into Canny-edges, Black-and-white, resized and depth images. I also find contours and search for objects in a frame. These data are fed into the neural network for more approximate calculation of the decision.
+
 <img src="https://supercoolserver.azurewebsites.net/assets/img/fsebcardom.gif" width="500"/>
 
 
