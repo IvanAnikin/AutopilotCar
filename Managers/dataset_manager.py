@@ -1,9 +1,20 @@
-import numpy
 import numpy as np
 import pandas as pd
 import cv2
 import os
 import matplotlib.pyplot as plt
+import sys
+
+import PIL.Image as pil
+from PIL import Image
+
+import mxnet as mx
+from mxnet.gluon.data.vision import transforms
+
+import matplotlib as mpl
+import matplotlib.cm as cm
+
+import gluoncv
 
 from Managers import preporcess_manager
 
@@ -164,6 +175,17 @@ class DatasetManager():
                 cv2.imshow('with_contours', with_contours)
             except:
                 pass
+        if (self.visualisation_type[9]):
+            disp_resized_np = row[9]
+            vmax = np.percentile(disp_resized_np, 95)
+            normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+            colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
+            im = pil.fromarray(colormapped_im)
+
+            depth_frame = np.asarray(im)
+            cv2.imshow('depth_frame', depth_frame)
+
         if ("frame" in locals()):
             if (self.dataset_type[5]): cv2.putText(frame, 'Action: ' + str(row[5]), (10, 50), cv2.FONT_HERSHEY_COMPLEX,
                                                    0.5, (0, 255, 0), 2)
@@ -180,7 +202,7 @@ class DatasetManager():
         if dataset==[]: dataset = np.load(self.dataset_name_full, allow_pickle=True)
         count = 0
         for row in dataset:
-            row = row[count]
+            #row = row[count]
             self.visualise_row(row=row, count=count)
             count+=1
             k = cv2.waitKey(500) & 0xff
@@ -381,6 +403,77 @@ class DatasetManager():
 
             print("New dataset shape: {shape}".format(shape = np.array(new_dataset).shape))
             if not os.path.exists(self.datasets_directory + "/with_objects/" + file_name): np.save(self.datasets_directory + "/with_objects/" + file_name, np.array(new_dataset))
+            else: raise FileExistsError('The file already exists')
+
+    def add_monodepth(self, testing=False):
+
+        files = [i for i in os.listdir(self.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_s_e_b_c_a_r_d_o' in i]
+
+        feed_height = 96
+        feed_width = 320
+
+        # using cpu
+        ctx = mx.cpu(0)
+
+        model = gluoncv.model_zoo.get_model('monodepth2_resnet18_kitti_mono_640x192',
+                                            # monodepth2_resnet18_kitti_stereo_640x192 monodepth2_resnet18_posenet_kitti_mono_640x192
+                                            pretrained_base=False, ctx=ctx, pretrained=True)
+
+        for file_name in files:
+
+            dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
+            new_dataset = []
+
+            print("Dataset: {name}".format(name=file_name))
+
+            count = 0
+            for row in dataset:
+
+                #row = row[0]
+                last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, objects = row
+                original_height, original_width = last_frame.shape[:2]
+
+                raw_img = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(raw_img)
+
+                img = img.resize((feed_width, feed_height), pil.LANCZOS)
+                img = transforms.ToTensor()(mx.nd.array(img)).expand_dims(0).as_in_context(context=ctx)
+
+                outputs = model.predict(img)
+                disp = outputs[("disp", 0)]
+                disp_resized = mx.nd.contrib.BilinearResize2D(disp, height=int(original_height),
+                                                              width=int(original_width))
+
+                disp_resized_np = disp_resized.squeeze().as_in_context(mx.cpu()).asnumpy()
+
+                if(testing):
+                    vmax = np.percentile(disp_resized_np, 95)
+                    normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
+                    mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+                    colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
+                    im = pil.fromarray(colormapped_im)
+
+                    depth_frame = np.asarray(im)
+                    output = np.concatenate((depth_frame, last_frame), axis=0)
+                    cv2.imshow('frame', output)
+
+                    k = cv2.waitKey(1)
+
+                    if k == 27:  # If escape was pressed exit
+                        cv2.destroyAllWindows()
+                        break
+
+                new_row = (last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, disp_resized_np)
+                new_dataset.append(new_row)
+
+                print("Step: {step}/{len}".format(step=count, len=len(dataset)))
+
+                count+=1
+
+            print("New dataset shape: {shape}".format(shape = np.array(new_dataset).shape))
+            #file_name = self.dataset_name = self.dataset_name_from_type([1,1,1,1,1,1,1,1,1], subname=subname)
+            if not os.path.exists(self.datasets_directory + "/with_monodepth/" + file_name): np.save(self.datasets_directory + "/with_monodepth/" + file_name, np.array(new_dataset))
             else: raise FileExistsError('The file already exists')
 
 
