@@ -4,7 +4,7 @@
 
 
 ## Main structure
-![](https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg)
+<img src="https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg" width="300"/>
 
 ## Car
 ### Hardware structure
@@ -28,14 +28,14 @@ Positive reward was given for image frames difference and new objects detected. 
 
 #### Detective
 The model was trained in a same way as the explorer with an addittion of searching for a specific object in frames. Searching is made by looking for similar hotpoints with ones in a folder with example images of the wanted objects.
- <img src="https://supercoolserver.azurewebsites.net/assets/img/ml_car_detective.jpg" height="300"/>
+ <img src="https://supercoolserver.azurewebsites.net/assets/img/ml_car_detective.jpg" width="500"/>
 
 #### Follower
 This type is different in it's base, because the action decision, doesn't come from the neural network, but from an algorithm, that detects the object(face) and moves to the direction of the object. I've made it in different variations:
   - Looking for a face in the frame from car and moving to the direction of the face movement
   - Choosing a specific object and moving to the direction of the object movement
   - The following was made with webcam movement only or with the movement of the whole car, using wheels motors rotation 
-  <img src="https://supercoolserver.azurewebsites.net/assets/img/ml_car_face_following.gif?raw=true" height="300"/>
+  <img src="https://supercoolserver.azurewebsites.net/assets/img/ml_car_face_following.gif?raw=true" width="500"/>
 
 ### Agents
 
@@ -57,4 +57,4 @@ Model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/m
 ###### Output:
 - Q value for each of the actions (Left, Right, Forward)
 
-![](https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork.png)
+ <img src="https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork.png" width="500"/>
