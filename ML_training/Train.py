@@ -41,7 +41,8 @@ class Trainer():
         minimal_distance = 20,
         object = 'helmet',
         object_threshold = 0.8,
-        MIN_MATCH_COUNT = 7
+        MIN_MATCH_COUNT = 7,
+        models_directory="C:/ML_car/Models"
         ):
         super().__init__()
 
@@ -82,11 +83,11 @@ class Trainer():
         self.datasetManager = dataset_manager.DatasetManager(dataset_type = dataset_type, subname=subname,
                                                              datasets_directory=datasets_directory, type=type, dim=dim) #C:/Users/ivana/OneDrive/Coding/ML/Com_Vis/car_project/Datasets
         self.datasetManager.visualisation_type = visualisation_type
-        if model_type=="DQN": self.Agent = Agents.DQN(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory="C:/ML_car/Models",
+        if model_type=="DQN": self.Agent = Agents.DQN(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory=models_directory,
                                 load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
         elif model_type=="Actor_Critic": self.Agent = Agents.Actor_Critic(state_size = self.state_size, actions=actions, optimizer=optimizer,
-                                models_directory="C:/ML_car/Models", load_model=load_model, model_name="Actor_critic", model_subname=model_subname, minimal_distance=minimal_distance)
-        elif model_type=="DQN_2": self.Agent = Agents.DQN_2(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory="C:/ML_car/Models",
+                                models_directory=models_directory, load_model=load_model, model_name="Actor_critic", model_subname=model_subname, minimal_distance=minimal_distance)
+        elif model_type=="DQN_2": self.Agent = Agents.DQN_2(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory=models_directory,
                                 load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
         self.Agent.visualise_model()
 
