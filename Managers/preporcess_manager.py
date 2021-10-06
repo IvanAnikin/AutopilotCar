@@ -1,13 +1,25 @@
-import cv2
-import numpy as np
-import os
 import time
 from termcolor import colored
+
+import numpy as np
+import cv2
+import os
+
+import PIL.Image as pil
+from PIL import Image
+
+import mxnet as mx
+from mxnet.gluon.data.vision import transforms
+
+import matplotlib as mpl
+import matplotlib.cm as cm
+
+import gluoncv
 
 class PreprocessManager():
     def __init__(self, contours_count = 5, minimal_distance = 15, type = "explorer", edges_avg = 120000, edges_max = 500000,
                  edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10, wanted_object_reward = 10,   new_object_reward = 10,
-                 dim=[[0, 0, 1],[1, 1, 1, 1, 1]], scale_percent=50):
+                 dim=[[0, 0, 1],[1, 1, 1, 1, 1, 1]], scale_percent=50, feed_width=96, feed_height=320):
         self.contours_count = contours_count
         self.minimal_distance = minimal_distance
         self.type = type
@@ -24,6 +36,8 @@ class PreprocessManager():
         self.wanted_object_reward = wanted_object_reward
         self.dim = dim
         self.scale_percent = scale_percent
+        self.feed_width = feed_width
+        self.feed_height = feed_height
 
         # load the COCO class labels our YOLO model was trained on
         labelsPath = os.path.sep.join([self.model_path, "coco.names"])
@@ -78,30 +92,32 @@ class PreprocessManager():
 
         return canny_edges, chosen_contours
 
-    # Dependencies:
-    #   common: distance    - too close = -10                                                                   # -> Other proportions of dependencies
-    #   explorer: frame difference from others
     def reward_calculator(self, frame, last_frame, distance, canny_edges=[], objects=[], object_found=False):
 
         if canny_edges==[]: canny_edges=self.canny_edges(frame=frame)
         reward = 0
+
         # __1__ - Punishment for too little distance
         if (int(distance) <= self.minimal_distance): reward = reward - 10
-        elif((self.type == "explorer" or self.type == "detective") and len(canny_edges) > 0):                   # reward for difference only if not too close distance
-            edges_sum = 0
-            for edges_row in canny_edges:
-                for edge in edges_row:
-                    edges_sum += edge
-            # __2__ - Frame difference reward
-            # calculate frame difference from the previous frame if not too small edges sum                # -> difference from some ammount of the PREVIOUS/  (previous+next - unable for realtime training)
-            if(edges_sum > self.min_edges_sum_for_difference):
-                difference = cv2.absdiff(frame, last_frame).astype(np.uint8)
-                difference = round(100 - (np.count_nonzero(difference) * 100) / difference.size, 2)  # 0 to 15
-                reward += difference
-            # __3__ - Edges reward
-            # Calculating edges count for higher reward for more edges
-            edges_reward = edges_sum/self.edges_coefficient - self.edges_avg/self.edges_coefficient
-            reward += edges_reward  # -> difference/different variable
+        elif((self.type == "explorer" or self.type == "detective")):
+            if(canny_edges.any() > 0):                   # reward for difference only if not too close distance
+                edges_sum = 0
+                for edges_row in canny_edges:
+                    for edge in edges_row:
+                        edges_sum += edge
+
+                # __2__ - Frame difference reward
+                # calculate frame difference from the previous frame if not too small edges sum                # -> difference from some ammount of the PREVIOUS/  (previous+next - unable for realtime training)
+                if(edges_sum > self.min_edges_sum_for_difference):
+                    difference = cv2.absdiff(frame, last_frame).astype(np.uint8)
+                    difference = round(100 - (np.count_nonzero(difference) * 100) / difference.size, 2)  # 0 to 15
+                    reward += difference
+
+                # __3__ - Edges reward
+                # Calculating edges count for higher reward for more edges
+                edges_reward = edges_sum/self.edges_coefficient - self.edges_avg/self.edges_coefficient
+                reward += edges_reward  # -> difference/different variable
+
             # __4__ - Objects reward
             # Reward for each object detected
             for object in objects:
@@ -109,8 +125,9 @@ class PreprocessManager():
                 if(object[0] not in self.detected_objects):
                     reward += self.new_object_reward
                     self.detected_objects.append(object[0])
+
             # __5__ - Reward for finding object it was looking for
-            reward+=self.wanted_object_reward
+            if(object_found): reward+=self.wanted_object_reward
 
         return reward
 
@@ -207,6 +224,48 @@ class PreprocessManager():
 
         return objects_detected
 
+    def monodepth(self, frame, visualise=False):
+
+        # MOVE TO TRAIN AND SEND AS PARAM to make it faster --- ?
+        # using cpu
+        ctx = mx.cpu(0)
+        model = gluoncv.model_zoo.get_model('monodepth2_resnet18_kitti_mono_640x192',
+                                            # monodepth2_resnet18_kitti_stereo_640x192 monodepth2_resnet18_posenet_kitti_mono_640x192
+                                            pretrained_base=False, ctx=ctx, pretrained=True)
+
+        original_height, original_width = frame.shape[:2]
+
+        raw_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(raw_img)
+
+        img = img.resize((self.feed_width, self.feed_height), pil.LANCZOS)
+        img = transforms.ToTensor()(mx.nd.array(img)).expand_dims(0).as_in_context(context=ctx)
+
+        outputs = model.predict(img)
+        disp = outputs[("disp", 0)]
+        disp_resized = mx.nd.contrib.BilinearResize2D(disp, height=int(original_height),
+                                                      width=int(original_width))
+
+        disp_resized_np = disp_resized.squeeze().as_in_context(mx.cpu()).asnumpy()
+
+        if (visualise):
+            vmax = np.percentile(disp_resized_np, 95)
+            normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+            colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
+            im = pil.fromarray(colormapped_im)
+
+            depth_frame = np.asarray(im)
+            output = np.concatenate((depth_frame, frame), axis=0)
+            cv2.imshow('frame', output)
+
+            k = cv2.waitKey(1)
+
+            if k == 27:  # If escape was pressed exit
+                cv2.destroyAllWindows()
+
+        return disp_resized_np
+
     def state_preprocess(self, frame, distance=0):
 
         num_data = []
@@ -220,6 +279,7 @@ class PreprocessManager():
         if (self.dim[1][2] != 0): vid_data.append(resized[:, :, 2])
         if (self.dim[1][3] != 0): vid_data.append(cv2.resize(self.canny_edges(frame=frame), dim, interpolation=cv2.INTER_AREA))
         if (self.dim[1][4] != 0): vid_data.append(self.blackAndWhite(frame=frame))
+        if (self.dim[1][5] != 0): vid_data.append(cv2.resize(self.monodepth(frame=frame), dim, interpolation=cv2.INTER_AREA))
 
         if vid_data != []: vid_data = np.array([vid_data])
         for num_element in num_data: state.append(np.array([num_element]))

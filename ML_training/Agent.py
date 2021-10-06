@@ -81,9 +81,9 @@ class Actor_Critic():
         self.rewards_history.append(reward)
 
     def save_model(self, subname=""):
-        dir="{directory}/Training/Actor_Critic/"
+        dir="{directory}/Training/{class_name}/"
         if subname!="": dir+="{subname}/"
-        name = dir.format(directory=self.models_directory, subname=subname)
+        name = dir.format(directory=self.models_directory, class_name=self.__class__.__name__, subname=subname)
         if not os.path.exists(name): os.mkdir(name)
         name+="{name}.h5"
         #name=name.format(name=self.models_names["q_name"])
@@ -182,53 +182,127 @@ class DQN():
     def alighn_target_model(self):
         self.target_network.set_weights(self.q_network.get_weights())
 
-    def act(self, state):
-        if np.random.rand() <= self.epsilon:
-            return np.random.choice(self.actions)
+    def act(self, state, training = False):
 
-        q_values = self.q_network.predict(state)
-        return np.argmax(q_values[0])
+            if np.random.rand() <= self.epsilon and not training:
+                return np.random.choice(self.actions)
+
+            q_values = self.q_network(state)
+            return np.argmax(q_values[0])
 
     def retrain(self, batch_size):
         minibatch = random.sample(self.expirience_replay, batch_size)
 
         for state, action, reward, next_state in minibatch:
 
-            target = self.q_network.predict(state)
+            target = self.q_network(state)
 
-            #if terminated:
-            #    target[0][action] = reward
-            #else:
-            t = self.target_network.predict(next_state)
+            t = self.target_network(next_state)
             target[0][action] = reward + self.gamma * np.amax(t)
 
             self.q_network.fit(state, target, epochs=1, verbose=0)
 
     def save_model(self, subname=""):
-        dir="{directory}/Training/"
+        dir="{directory}/Training/{class_name}/"
         if subname!="": dir+="{subname}/"
-        name = dir.format(directory=self.models_directory, subname=subname)
+        name = dir.format(directory=self.models_directory, class_name=self.__class__.__name__, subname=subname)
         if not os.path.exists(name): os.mkdir(name)
         name+="{name}.h5"
-        #name=name.format(name=self.models_names["q_name"])
         self.q_network.save_weights(name.format(name=self.models_names["q_name"]))
         self.target_network.save_weights(name.format(name=self.models_names["t_name"]))
-        '''
-        tf.keras.models.save_model(
-            self.q_network, dir.format(directory=self.models_directory,name=self.models_names["q_name"],
-                                                                                subname=subname), overwrite=True, include_optimizer=True,
-                                                                 save_format=None, signatures=None, options=None, save_traces=True)
-        tf.keras.models.save_model(
-            self.target_network, dir.format(directory=self.models_directory,name=self.models_names["t_name"],
-                                                                                subname=subname), overwrite=True, include_optimizer=True,
-                save_format=None,signatures=None, options=None, save_traces=True)
-        '''
+
     def visualise_model(self):
         self.q_network.summary()
-        #self.target_network.summary()
         plot_model(model=self.q_network, to_file="{directory}/img/{name}_{subname}.png".format(directory=self.models_directory, name=self.models_names["q_name"], subname=self.model_subname), show_shapes=True)
-        #plot_model(model=self.target_network, to_file="{directory}/img/{name}.png".format(directory=self.models_directory, name=self.models_names["t_name"]), show_shapes=True)
 
+class DQN_2():
+
+    def __init__(
+            self,
+            state_size, actions, models_directory, load_model, optimizer=Adam(learning_rate=0.01), models_names=bidict({"q_name":"DQN_qnetwork"}), model_subname=""):
+        """Initialize."""
+        super().__init__()
+
+        # Initialize atributes
+        self._state_size = state_size
+        self._action_size = len(actions)
+        self.actions = actions
+        self._optimizer = optimizer
+        self.models_directory = models_directory
+        self.models_names = models_names
+        self.model_subname = model_subname
+
+        self.expirience_replay = deque(maxlen=2000)
+
+        # Initialize discount and exploration rate
+        self.gamma = 0.6
+        self.epsilon = 0.1
+        dir = "{directory}/Trained/673243b/All/"
+        if model_subname != "": dir += "{subname}/"
+        dir+="{name}.h5"
+        model_full_path=bidict({"q_path":dir.format(directory=models_directory, name=models_names["q_name"], subname=model_subname),
+                                "t_path":dir.format(directory=models_directory, name=models_names["t_name"], subname=model_subname)})
+
+
+        self.Model_manager = Models.DNN(c_dim=state_size[0][0], a_dim=state_size[0][1], d_dim=state_size[0][2],
+                                        width=state_size[1][0], height=state_size[1][1], depth=state_size[1][2],
+                                        output_size=self._action_size)
+        self.q_network = self.Model_manager.model
+        print("Model created")
+
+        if(load_model and os.path.exists(model_full_path["q_path"])):
+            self.q_network.load_weights(model_full_path['q_path'])
+            print("Weights loaded | {q_path}".format(q_path=model_full_path["q_path"]))
+
+    def store(self, state, action, reward, next_state):
+        self.expirience_replay.append((state, action, reward, next_state))
+
+    def act(self, state, training = False):
+
+        # "Select action using epsilon-greedy policy"
+        # sample_epsilon = np.random.rand()
+        # if sample_epsilon <= epsilon:  # Select random action
+        #    action = np.random.choice(action_dim)
+        # else:  # Select action with highest Q-value
+
+        if np.random.rand() <= self.epsilon and not training:
+            return np.random.choice(self.actions)
+
+        "Obtain Q-values from network"
+        q_values = self.q_network(state)
+        action = np.argmax(q_values[0])
+        current_q_value = np.amax(q_values[0])
+
+        return action, current_q_value
+
+    def train(self, next_state, current_q_value, reward, tape):
+        next_q_values = tf.stop_gradient(self.q_network(next_state))  # No gradient computation
+        next_action = np.argmax(next_q_values[0])
+        next_q_value = next_q_values[0, next_action]
+
+        "Compute observed Q-value"
+        observed_q_value = reward + (self.gamma * next_q_value)
+
+        "Compute loss value"
+        loss_value = (observed_q_value - current_q_value) ** 2
+
+        "Compute gradients"
+        grads = tape.gradient(loss_value, self.q_network.trainable_variables)
+
+        "Apply gradients to update network weights"
+        self._optimizer.apply_gradients(zip(grads, self.q_network.trainable_variables))
+
+    def save_model(self, subname=""):
+        dir="{directory}/Training/{class_name}/"
+        if subname!="": dir+="{subname}/"
+        name = dir.format(directory=self.models_directory, class_name=self.__class__.__name__, subname=subname)
+        if not os.path.exists(name): os.mkdir(name)
+        name+="{name}.h5"
+        self.q_network.save_weights(name.format(name=self.models_names["q_name"]))
+
+    def visualise_model(self):
+        self.q_network.summary()
+        plot_model(model=self.q_network, to_file="{directory}/img/{name}_{subname}.png".format(directory=self.models_directory, name=self.models_names["q_name"], subname=self.model_subname), show_shapes=True)
 
 class DNN():
 

@@ -8,3 +8,21 @@
 # 6 - reward		- r     - not use   for training
 # 7 - distance		- d     - use       for training    - works
 # 8 - objects       - o     - use       for training    - works
+# 9 - monodepth     - m     - use       for training    -
+
+Model input dim
+[
+    [
+        0 -
+        1 -
+        2 - distance        - use       for training    - works
+    ],
+    [
+        0 - R resized       - use       for training    - works
+        1 - G resized       - use       for training    - works
+        2 - B resized       - use       for training    - works
+        3 - canny_edges     - use       for training    - works
+        4 - blackAndWhite   - use       for training    - works
+        5 - monodepth       - use       for training    -
+    ]
+]

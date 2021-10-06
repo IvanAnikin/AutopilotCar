@@ -1,12 +1,13 @@
 import time
+import datetime
 import socket
 import cv2
 import numpy as np
 import sys
 from bidict import bidict
 import time
-import datetime
 from termcolor import colored
+import os
 
 from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
@@ -26,7 +27,7 @@ class Trainer():
         visualisation_type = [1, 1, 1, 1, 1, 1, 1, 1, 1],
         subname = "new",
         datasets_directory = "C:/ML_car/Datasets/Preprocessed/673243b",
-        dim=[[0, 0, 1],[1, 1, 1, 1, 1]],      #[1, 1, 1, 1, 1] [0, 0, 0, 1, 1]     #c_dim = (None, 1, 2)   # [[contours-not works, action, distance],[resized, canny_edges, blackAndWhite]]
+        dim=[[0, 0, 1],[1, 1, 1, 1, 1, 1]],      #[1, 1, 1, 1, 1] [0, 0, 0, 1, 1]     #c_dim = (None, 1, 2)   # [[contours-not works, action, distance],[resized, canny_edges, blackAndWhite]]
         model_subname = "",
         vid_dim=[120, 160],
         actions = [0, 2, 3],       # 0-Forward; 1-Backward; 2-Left; 3-Right
@@ -38,7 +39,7 @@ class Trainer():
         model_type="Actor_Critic",
         video_source = "Ip Esp32 Stream",
         minimal_distance = 20,
-        object = None,
+        object = 'helmet',
         object_threshold = 0.8,
         MIN_MATCH_COUNT = 7
         ):
@@ -85,6 +86,8 @@ class Trainer():
                                 load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
         elif model_type=="Actor_Critic": self.Agent = Agents.Actor_Critic(state_size = self.state_size, actions=actions, optimizer=optimizer,
                                 models_directory="C:/ML_car/Models", load_model=load_model, model_name="Actor_critic", model_subname=model_subname, minimal_distance=minimal_distance)
+        elif model_type=="DQN_2": self.Agent = Agents.DQN_2(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory="C:/ML_car/Models",
+                                load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
         self.Agent.visualise_model()
 
         self.cv_manager = cv_manager.CV_Manager(threshold=object_threshold, name = object)
@@ -403,27 +406,29 @@ class Trainer():
         # Observing state of the environment
         frame = dataset[0][0]
         distance = dataset[0][7]
+        state, action, reward = self.get_state_row_data(row=dataset[0])
         state = self.datasetManager.preprocessManager.state_preprocess(frame=frame, distance=distance)
-        #state, action, reward = self.get_state_row_data(row=dataset[0])
 
         with tf.GradientTape(persistent=True) as tape:
             for timestep in range(1, len(dataset)-1):
 
                 # Calculating action
                 if self.model_type == "DQN":
-                    action = self.Agent.act(state)
+                    model_action = self.Agent.act(state, training = True)
                 elif self.model_type == "Actor_Critic":
                     action_probs, critic_value = self.Agent.act(state)
                     # print("\naction_probs: {action_probs} | critic_value: {critic_value}".format(action_probs=action_probs, critic_value=critic_value))
                     propabilities = self.convert_propabilitites(action_probs=np.array(np.squeeze(action_probs)))
-                    action = np.random.choice(self.actions, p=propabilities)
+                    model_action = np.random.choice(self.actions, p=propabilities)
                     # print("propabilities: {propabilities} | action: {action}".format(propabilities=propabilities, action=action))
-                model_actions.append(action)
-                # Taking action
-                # -
+                if(self.model_type == "DQN_2"):
+                    model_action, current_q_value = self.Agent.act(state, training = True)
+
+                model_actions.append(model_action)
 
                 # Observing state after taking action
-                next_state, action, reward = self.get_state_row_data(row=dataset[timestep+1])
+                next_state, next_action, reward = self.get_state_row_data(row=dataset[timestep+1])
+
                 # Receive next state                                                            # -- ***
                 row = dataset[timestep]
                 frame = row[0]
@@ -446,11 +451,14 @@ class Trainer():
                 elif self.model_type == "Actor_Critic": self.Agent.store(critic_value, action_probs, action, reward)
 
                 state = next_state
+                action = next_action
 
                 if self.model_type == "DQN" and len(self.Agent.expirience_replay) > self.batch_size:
                     self.Agent.retrain(self.batch_size)
-                elif self.model_type == "Actor_Critic" and len(self.Agent.rewards_history) > 0:#self.batch_size
+                if self.model_type == "Actor_Critic" and len(self.Agent.rewards_history) > 0:#self.batch_size
                     self.Agent.retrain(tape=tape)
+                if self.model_type == "DQN_2" and len(self.Agent.expirience_replay) > self.batch_size:
+                    self.Agent.train(next_state=next_state, current_q_value=current_q_value, reward=reward, tape=tape)
 
                 # Aligning target model if on second last state
                 if(timestep==len(dataset)-2 and self.model_type=="DQN"): self.Agent.alighn_target_model()
@@ -470,6 +478,22 @@ class Trainer():
                 #timestep+=1
                 last_frame = frame
                 self.total_timesteps += 1
+
+    def simulate_on_datasets(self, visualise = False, type = 1):
+        files = [i for i in os.listdir(self.datasetManager.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasetManager.datasets_directory, i)) and self.datasetManager.dataset_name_from_type(self.datasetManager.type, subname="") in i]
+        self.total_len = 0
+        for file_name_2 in files: self.total_len += len(np.load(self.datasetManager.datasets_directory + '/' + file_name_2, allow_pickle=True))
+
+        count = 0
+        for file_name in files:
+
+            if(type==1): self.simulate_on_dataset(file_name=file_name, visualise=visualise)
+            if(type==2): self.simulate_on_dataset_2(file_name=file_name, visualise=visualise)
+            if visualise: print(
+                "\nFinished dataset '{name}' | {count}/{len}".format(name=file_name, count=count + 1, len=len(files)))
+
+            count += 1
 
     def get_state_row_data(self, row, dim=[], vid_inputs=[]):
 

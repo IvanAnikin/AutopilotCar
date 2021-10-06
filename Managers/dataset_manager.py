@@ -20,11 +20,11 @@ from Managers import preporcess_manager
 
 class DatasetManager():
     def __init__(self, dataset_type = [1, 1, 1, 1, 1, 1, 1, 1, 1], subname="", data=[], save_every = 5, step_from_saving = 0, minimal_distance = 15,
-                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3", dim=[[0, 0, 1],[1, 1, 1, 1, 1]]):   #"../Datasets" #/Normalised brightness
+                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3", dim=[[0, 0, 1],[1, 1, 1, 1, 1]], feed_width=96, feed_height=320):   #"../Datasets" #/Normalised brightness
 
         self.save_every = save_every
         self.step_from_saving = step_from_saving
-        self.dataset_name_letters = ["f", "s", "e", "b", "c", "a", "r", "d", "o"]
+        self.dataset_name_letters = ["f", "s", "e", "b", "c", "a", "r", "d", "o", "m"]
         self.dataset_vars = ["last_frame", "resized", "canny_edges", "blackAndWhite", "contours", "action", "reward", "distance", "objects"]
         self.dataset_type = dataset_type
         self.datasets_directory = datasets_directory
@@ -41,7 +41,8 @@ class DatasetManager():
         self.dim = dim
         self.visualisation_type = dataset_type
 
-        self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type, scale_percent=50, dim=dim)
+        self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type, scale_percent=50, dim=dim,
+                                                                      feed_width=feed_width, feed_height=feed_height)
         self.datasets_vis_string = "{4} \n Actions: \n \t average: {0} \n \t sum: {1} \n Distances: \n \t average: {2} \n \t sum: {3} \n Len: {5} \n"
 
     def save_data(self, data):
@@ -53,7 +54,7 @@ class DatasetManager():
             np.save(self.datasets_directory + '/' + self.dataset_name, self.data)
             self.step_from_saving = 0
 
-    def dataset_name_from_type(self, type=[1, 0, 0, 0, 0, 1, 0, 1], subname = "1"):
+    def dataset_name_from_type(self, type=[1, 0, 0, 0, 0, 1, 0, 1, 0, 0], subname = "1"):
 
         dataset_name = ""
         count = 0
@@ -66,6 +67,113 @@ class DatasetManager():
         if(subname!=""): dataset_name += ("_" + subname)
 
         return dataset_name
+
+
+    def visualise_row(self, row=[], count=None):
+        if (self.dataset_type[0]):
+            frame = row[0]
+        elif (self.dataset_type[1]):
+            frame = row[1]
+        elif (self.visualisation_type[2]):
+            frame = row[2]
+        elif (self.visualisation_type[3]):
+            frame = row[3]
+        if (self.dataset_type[1]):
+            if (self.dataset_type[8]):
+                for id, box in row[8]:
+                    # extract the bounding box coordinates
+                    (x, y) = (box[0], box[1])
+                    (w, h) = (box[2], box[3])
+                    # draw a bounding box rectangle and label on the frame
+                    color = [int(c) for c in self.preprocessManager.COLORS[id]]
+                    cv2.rectangle(row[1], (x, y), (x + w, y + h), color, 2)
+                    text = "{}".format(self.preprocessManager.LABELS[id])
+                    cv2.putText(row[1], text, (x, y - 5),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            cv2.imshow('resized', row[1])
+        if (self.visualisation_type[2]): cv2.imshow('canny_edges', row[2])
+        if (self.visualisation_type[3]): cv2.imshow('blackAndWhite', row[3])
+        if (self.dataset_type[4]):
+            try:
+                with_contours = frame.copy()
+                for c in row[4]:
+                    rows, cols = frame.shape[:2]
+                    [vx, vy, x, y] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
+                    lefty = int((-x * vy / vx) + y)
+                    righty = int(((cols - x) * vy / vx) + y)
+                    cv2.line(with_contours, (cols - 1, righty), (0, lefty), (0, 255, 0), 2)
+                cv2.imshow('with_contours', with_contours)
+            except:
+                pass
+        if (self.visualisation_type[9]):
+            disp_resized_np = row[9]
+            vmax = np.percentile(disp_resized_np, 95)
+            normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+            colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
+            im = pil.fromarray(colormapped_im)
+
+            depth_frame = np.asarray(im)
+            cv2.imshow('depth_frame', depth_frame)
+
+        if ("frame" in locals()):
+            if (self.dataset_type[5]): cv2.putText(frame, 'Action: ' + str(row[5]), (10, 50), cv2.FONT_HERSHEY_COMPLEX,
+                                                   0.5, (0, 255, 0), 2)
+            if (self.dataset_type[7]): cv2.putText(frame, 'Distance: ' + str(row[7]), (10, 100),
+                                                   cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
+            if (self.dataset_type[6]): cv2.putText(frame, 'Reward: ' + str(row[6]), (10, 150), cv2.FONT_HERSHEY_COMPLEX,
+                                                   0.5, (0, 255, 0), 2)
+            if(count!=None): cv2.putText(frame, 'Count: ' + str(count), (10, 200), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.imshow('frame,', row[0])
+
+    def visualise_dataset(self, dataset = []):
+
+        if dataset==[]: dataset = np.load(self.dataset_name_full, allow_pickle=True)
+        count = 0
+        for row in dataset:
+            #row = row[count]
+            self.visualise_row(row=row, count=count)
+            count+=1
+            k = cv2.waitKey(500) & 0xff
+            if k == 27:
+                break
+
+    def visualise_datasets(self):
+        files = [i for i in os.listdir(self.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_a_d_new' in i]
+        for file_name in files:
+            dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
+
+            self.visualise_dataset(dataset)
+
+
+    def update_rewards_one(self, dataset=[]):
+        if dataset==[]: dataset = np.load(self.dataset_name_full, allow_pickle=True)
+        count = 0
+        new_dataset = []
+        for row in dataset:
+            last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, objects, monodepth = row
+            row[6] = self.preprocessManager.reward_calculator(frame=last_frame, last_frame=dataset[count - 1][self.frame_position],
+                                                               distance=distance, canny_edges=canny_edges, objects=objects, object_found=False)
+            new_dataset.append(row)
+
+            print("Step: {step}/{len}".format(step=count, len=len(dataset)))
+            count+=1
+        return dataset
+
+    def update_rewards(self):
+        files = [i for i in os.listdir(self.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and self.dataset_name_from_type(type=self.dataset_type, subname="") in i]
+        for file_name in files:
+            dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
+            print("Dataset: {name}".format(name=file_name))
+
+            new_dataset = self.update_rewards_one(dataset)
+            if not os.path.exists(self.datasets_directory + "/updated_rewards" + file_name):
+                np.save(self.datasets_directory + "/updated_rewards" + file_name, np.array(new_dataset))
+            else:
+                raise FileExistsError('The file already exists')
+
 
     # Frames conversion and reward calculation
     def dataset_preprocess(self, dataset = []):
@@ -138,84 +246,6 @@ class DatasetManager():
                 pass
         cv2.imshow('canny_edges', canny_edges)
         cv2.imshow('with_contours', with_contours)
-
-    def visualise_row(self, row=[], count=None):
-        if (self.dataset_type[0]):
-            frame = row[0]
-        elif (self.dataset_type[1]):
-            frame = row[1]
-        elif (self.visualisation_type[2]):
-            frame = row[2]
-        elif (self.visualisation_type[3]):
-            frame = row[3]
-        if (self.dataset_type[1]):
-            if (self.dataset_type[8]):
-                for id, box in row[8]:
-                    # extract the bounding box coordinates
-                    (x, y) = (box[0], box[1])
-                    (w, h) = (box[2], box[3])
-                    # draw a bounding box rectangle and label on the frame
-                    color = [int(c) for c in self.preprocessManager.COLORS[id]]
-                    cv2.rectangle(row[1], (x, y), (x + w, y + h), color, 2)
-                    text = "{}".format(self.preprocessManager.LABELS[id])
-                    cv2.putText(row[1], text, (x, y - 5),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-            cv2.imshow('resized', row[1])
-        if (self.visualisation_type[2]): cv2.imshow('canny_edges', row[2])
-        if (self.visualisation_type[3]): cv2.imshow('blackAndWhite', row[3])
-        if (self.dataset_type[4]):
-            try:
-                with_contours = frame.copy()
-                for c in row[4]:
-                    rows, cols = frame.shape[:2]
-                    [vx, vy, x, y] = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
-                    lefty = int((-x * vy / vx) + y)
-                    righty = int(((cols - x) * vy / vx) + y)
-                    cv2.line(with_contours, (cols - 1, righty), (0, lefty), (0, 255, 0), 2)
-                cv2.imshow('with_contours', with_contours)
-            except:
-                pass
-        if (self.visualisation_type[9]):
-            disp_resized_np = row[9]
-            vmax = np.percentile(disp_resized_np, 95)
-            normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
-            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
-            colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
-            im = pil.fromarray(colormapped_im)
-
-            depth_frame = np.asarray(im)
-            cv2.imshow('depth_frame', depth_frame)
-
-        if ("frame" in locals()):
-            if (self.dataset_type[5]): cv2.putText(frame, 'Action: ' + str(row[5]), (10, 50), cv2.FONT_HERSHEY_COMPLEX,
-                                                   0.5, (0, 255, 0), 2)
-            if (self.dataset_type[7]): cv2.putText(frame, 'Distance: ' + str(row[7]), (10, 100),
-                                                   cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
-            if (self.dataset_type[6]): cv2.putText(frame, 'Reward: ' + str(row[6]), (10, 150), cv2.FONT_HERSHEY_COMPLEX,
-                                                   0.5, (0, 255, 0), 2)
-            if(count!=None): cv2.putText(frame, 'Count: ' + str(count), (10, 200), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0), 2)
-            cv2.imshow('frame,', row[0])
-
-
-    def visualise_dataset(self, dataset = []):
-
-        if dataset==[]: dataset = np.load(self.dataset_name_full, allow_pickle=True)
-        count = 0
-        for row in dataset:
-            #row = row[count]
-            self.visualise_row(row=row, count=count)
-            count+=1
-            k = cv2.waitKey(500) & 0xff
-            if k == 27:
-                break
-
-    def visualise_datasets(self):
-        files = [i for i in os.listdir(self.datasets_directory) if
-                 os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_a_d_new' in i]
-        for file_name in files:
-            dataset = np.load(self.datasets_directory + '/' + file_name, allow_pickle=True)
-
-            self.visualise_dataset(dataset)
 
     def convert_old_dataset(self):
 
@@ -476,6 +506,65 @@ class DatasetManager():
             if not os.path.exists(self.datasets_directory + "/with_monodepth/" + file_name): np.save(self.datasets_directory + "/with_monodepth/" + file_name, np.array(new_dataset))
             else: raise FileExistsError('The file already exists')
 
+    def combine_o_m(self):
+
+        files = [i for i in os.listdir("C:/ML_car/Datasets/Preprocessed/fsebcardo_673243b") if
+                 os.path.isfile(os.path.join("C:/ML_car/Datasets/Preprocessed/fsebcardo_673243b", i)) and 'f_s_e_b_c_a_r_d_o' in i]
+        files_m = [i for i in os.listdir(self.datasets_directory) if
+                 os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_s_e_b_c_a_r_d_o_m' in i]
+
+        d_count = 0
+        for file_name in files:
+
+            dataset = np.load("C:/ML_car/Datasets/Preprocessed/fsebcardo_673243b" + '/' + file_name, allow_pickle=True)
+            dataset_m = np.load(self.datasets_directory + '/' + files_m[d_count], allow_pickle=True)
+
+            new_dataset = []
+
+            print("Dataset: {name}".format(name=file_name))
+
+            count = 0
+            for row in dataset:
+
+                # row = row[0]
+                last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, objects = row
+                last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, disp_resized_np = dataset_m[count]
+
+                new_row = (last_frame, resized, canny_edges, blackAndWhiteImage, contours, action, reward, distance, objects, disp_resized_np)
+                new_dataset.append(new_row)
+
+                print("Step: {step}/{len}".format(step=count, len=len(dataset)))
+
+                count += 1
+
+            print("New dataset shape: {shape}".format(shape=np.array(new_dataset).shape))
+            # file_name = self.dataset_name = self.dataset_name_from_type([1,1,1,1,1,1,1,1,1], subname=subname)
+            if not os.path.exists("E:/fsebcardom" + file_name):
+                np.save("E:/fsebcardom" + file_name, np.array(new_dataset))
+            else:
+                raise FileExistsError('The file already exists')
+
+            d_count+=1
+
+    def combine_all_datasets(self, name):
+        files = [i for i in os.listdir(self.datasets_directory) if
+                   os.path.isfile(os.path.join(self.datasets_directory, i)) and 'f_s_e_b_c_a_r_d_o_m' in i]
+
+        count = 0
+        new_dataset = []
+
+        for file_name in files:
+            dataset = np.load(self.datasets_directory + '/' + files[count], allow_pickle=True)
+
+            print("Dataset: {name}".format(name=file_name))
+
+            for row in dataset:
+                new_dataset.append(row)
+            count += 1
+
+        np.save("E:/" + name, np.array(new_dataset))
+
+
 
 # Dataset type:
 
@@ -489,8 +578,10 @@ class DatasetManager():
 # 6 - reward		- r     - not use   for training
 # 7 - distance		- d     - use       for training    - works
 # 8 - objects       - o     - use       for training    - works
+# 9 - monodepth     - m     - use       for training    -
 
 # Dataset versions:
 
 # 710e9e3   -- lower than min distance punishment, frames difference if edges exist, reward for count of canny edges
 # 673243b   -- + reward for object and new object
+# 996df78   -- + monodepth -- not trained yet
