@@ -16,8 +16,13 @@
 ### Software part
 You can find the code of the Arduino car [here](https://github.com/IvanAnikin/AutopilotCar/blob/main/Arduino%20Code/sketch_Car-datagatherer.ino)
 ## ML
-
 Machine learning logics are written on Python using Tensorflow and Keras libraries for models operation and OpenCv for Computer Vision image preprocessing and objects detection.
+
+### Input preprocessing
+I process the input image from the car into Canny-edges, Black-and-white, resized and depth images. I also find contours and search for objects in a frame. These data are fed into the neural network for more approximate calculation of the decision.
+
+<img src="https://supercoolserver.azurewebsites.net/assets/img/fsebcardom.gif" width="500"/>
+
 
 ### Types
 Type of the model is defined by rewards the model was given to specify purpose of actions
