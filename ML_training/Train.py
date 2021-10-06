@@ -62,7 +62,6 @@ class Trainer():
         self.avg_timestep=0
         self.type = type
         self.model_subname = model_subname
-        self.total_len = total_len
         self.total_timesteps=0
         self.batch_size = batch_size
         self.actions_relations = bidict({0:0, 1:2, 2:3})    # model:dataset
@@ -83,6 +82,14 @@ class Trainer():
         self.datasetManager = dataset_manager.DatasetManager(dataset_type = dataset_type, subname=subname,
                                                              datasets_directory=datasets_directory, type=type, dim=dim) #C:/Users/ivana/OneDrive/Coding/ML/Com_Vis/car_project/Datasets
         self.datasetManager.visualisation_type = visualisation_type
+
+        files = [i for i in os.listdir(self.datasetManager.datasets_directory)
+                 if os.path.isfile(os.path.join(self.datasetManager.datasets_directory,i))
+                 and self.datasetManager.dataset_name_from_type(self.datasetManager.type, subname="") in i]
+        self.total_len = 0
+        for file_name in files:
+            self.total_len += len(np.load(self.datasetManager.datasets_directory + '/' + file_name, allow_pickle=True))
+
         if model_type=="DQN": self.Agent = Agents.DQN(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory=models_directory,
                                 load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
         elif model_type=="Actor_Critic": self.Agent = Agents.Actor_Critic(state_size = self.state_size, actions=actions, optimizer=optimizer,

@@ -6,4 +6,4 @@ trainer = Train.Trainer(dim=[[0, 0, 1],[1, 1, 1, 1, 1, 1]], model_type="DQN_2", 
                         load_model=False)
 
 #trainer.simulate_on_datasets(visualise=True, type=1)
-trainer.simulate_on_dataset(file_name="f_s_e_b_c_a_r_d_o_m_combined.npy")
+trainer.simulate_on_dataset(file_name="f_s_e_b_c_a_r_d_o_m_combined.npy", visualise=True)
