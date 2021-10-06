@@ -5,7 +5,7 @@
 
 ## Main structure
 <img src="https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg" width="500"/>
-<img src="https://supercoolserver.azurewebsites.net/assets/img/ezgif.com-gif-maker.gif" width="500"/>
+<img src="https://supercoolserver.azurewebsites.net/assets/img/3D.gif" width="500"/>
 
 ## Car
 ### Hardware structure
