@@ -5,7 +5,6 @@
 
 ## Main structure
 <img src="https://supercoolserver.azurewebsites.net/assets/img/arduino_structure.jpg" width="500"/>
-<img src="https://supercoolserver.azurewebsites.net/assets/img/3D.gif" width="300"/>
 
 ## Car
 ### Hardware structure
@@ -14,6 +13,8 @@
 3. Ultrasonic distance sensor
 4. Wheels IR speed sensor - calculating exact distance
 5. 2 servos robotic arm - camera rotation
+<img src="https://supercoolserver.azurewebsites.net/assets/img/3D.gif" width="300"/>
+
 ### Software part
 You can find the code of the Arduino car [here](https://github.com/IvanAnikin/AutopilotCar/blob/main/Arduino%20Code/sketch_Car-datagatherer.ino)
 ## ML
