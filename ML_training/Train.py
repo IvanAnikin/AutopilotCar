@@ -45,7 +45,8 @@ class Trainer():
         models_directory="C:/ML_car/Models",
         images_directory = '../src/img/',
         plot_model_image = False,
-        detect_objects = True
+        detect_objects = True,
+        objects_model_path="C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models"
         ):
         super().__init__()
 
@@ -83,8 +84,8 @@ class Trainer():
         q_name = "DQN_qnetwork" #+ "_" + model_subname
         t_name = "DQN_target" #+ "_" + model_subname
 
-        self.datasetManager = dataset_manager.DatasetManager(dataset_type = dataset_type, subname=subname,
-                                                             datasets_directory=datasets_directory, type=type, dim=dim) #C:/Users/ivana/OneDrive/Coding/ML/Com_Vis/car_project/Datasets
+        self.datasetManager = dataset_manager.DatasetManager(dataset_type = dataset_type, subname=subname,datasets_directory=datasets_directory, type=type, dim=dim,
+                                                             objects_model_path=objects_model_path)
         self.datasetManager.visualisation_type = visualisation_type
 
         files = [i for i in os.listdir(self.datasetManager.datasets_directory)

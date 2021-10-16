@@ -20,7 +20,8 @@ from Managers import preporcess_manager
 
 class DatasetManager():
     def __init__(self, dataset_type = [1, 1, 1, 1, 1, 1, 1, 1, 1], subname="", data=[], save_every = 5, step_from_saving = 0, minimal_distance = 15,
-                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3", dim=[[0, 0, 1],[1, 1, 1, 1, 1]], feed_width=96, feed_height=320):   #"../Datasets" #/Normalised brightness
+                 type = "explorer", datasets_directory="C:/ML_car/Datasets/Preprocessed/710e9e3", dim=[[0, 0, 1],[1, 1, 1, 1, 1]], feed_width=96, feed_height=320,
+                 objects_model_path="C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models"):   #"../Datasets" #/Normalised brightness
 
         self.save_every = save_every
         self.step_from_saving = step_from_saving
@@ -42,7 +43,7 @@ class DatasetManager():
         self.visualisation_type = dataset_type
 
         self.preprocessManager = preporcess_manager.PreprocessManager(contours_count = 5, minimal_distance = minimal_distance, type = type, scale_percent=50, dim=dim,
-                                                                      feed_width=feed_width, feed_height=feed_height)
+                                                                      feed_width=feed_width, feed_height=feed_height, model_path=objects_model_path)
         self.datasets_vis_string = "{4} \n Actions: \n \t average: {0} \n \t sum: {1} \n Distances: \n \t average: {2} \n \t sum: {3} \n Len: {5} \n"
 
     def save_data(self, data):
