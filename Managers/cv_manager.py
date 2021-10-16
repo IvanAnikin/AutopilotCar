@@ -5,12 +5,12 @@ import os
 
 class CV_Manager():
 
-    def __init__(self, name = 'helmet', threshold=0.8):
+    def __init__(self, name = 'helmet', threshold=0.8, images_directory='../src/img/'):
         self.name = name
         self.good = []
         self.keypoints_1 = []
         self.keypoints_2 = []
-        self.images_directory = '../src/img/'
+        self.images_directory = images_directory
         self.ending = '.jpg'
         self.image_template = cv2.imread(self.images_directory + self.name + self.ending)
         self.threshold = threshold

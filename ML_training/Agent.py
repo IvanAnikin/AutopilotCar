@@ -219,7 +219,7 @@ class DQN_2():
 
     def __init__(
             self,
-            state_size, actions, models_directory, load_model, optimizer=Adam(learning_rate=0.01), models_names=bidict({"q_name":"DQN_qnetwork"}), model_subname=""):
+            state_size, actions, models_directory, load_model, optimizer=Adam(learning_rate=0.01), models_names=bidict({"q_name":"DQN_qnetwork"}), model_subname="", plot_model_image=False):
         """Initialize."""
         super().__init__()
 
@@ -231,6 +231,7 @@ class DQN_2():
         self.models_directory = models_directory
         self.models_names = models_names
         self.model_subname = model_subname
+        self.plot_model_image = plot_model_image
 
         self.expirience_replay = deque(maxlen=2000)
 
@@ -302,7 +303,7 @@ class DQN_2():
 
     def visualise_model(self):
         self.q_network.summary()
-        plot_model(model=self.q_network, to_file="{directory}/img/{name}_{subname}.png".format(directory=self.models_directory, name=self.models_names["q_name"], subname=self.model_subname), show_shapes=True)
+        if(self.plot_model_image): plot_model(model=self.q_network, to_file="{directory}/img/{name}_{subname}.png".format(directory=self.models_directory, name=self.models_names["q_name"], subname=self.model_subname), show_shapes=True)
 
 class DNN():
 

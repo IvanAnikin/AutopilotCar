@@ -42,7 +42,10 @@ class Trainer():
         object = 'helmet',
         object_threshold = 0.8,
         MIN_MATCH_COUNT = 7,
-        models_directory="C:/ML_car/Models"
+        models_directory="C:/ML_car/Models",
+        images_directory = '../src/img/',
+        plot_model_image = False,
+        detect_objects = True
         ):
         super().__init__()
 
@@ -57,6 +60,7 @@ class Trainer():
         self.object = object
         self.MIN_MATCH_COUNT = MIN_MATCH_COUNT
 
+        self.detect_objects = detect_objects
         self.actions = actions
         self.model_type=model_type
         self.avg_timestep=0
@@ -86,19 +90,21 @@ class Trainer():
         files = [i for i in os.listdir(self.datasetManager.datasets_directory)
                  if os.path.isfile(os.path.join(self.datasetManager.datasets_directory,i))
                  and self.datasetManager.dataset_name_from_type(self.datasetManager.type, subname="") in i]
-        self.total_len = 0
-        for file_name in files:
-            self.total_len += len(np.load(self.datasetManager.datasets_directory + '/' + file_name, allow_pickle=True))
+
+        self.total_len = total_len
+        if(total_len ==0):
+            for file_name in files:
+                self.total_len += len(np.load(self.datasetManager.datasets_directory + '/' + file_name, allow_pickle=True))
 
         if model_type=="DQN": self.Agent = Agents.DQN(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory=models_directory,
                                 load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
         elif model_type=="Actor_Critic": self.Agent = Agents.Actor_Critic(state_size = self.state_size, actions=actions, optimizer=optimizer,
                                 models_directory=models_directory, load_model=load_model, model_name="Actor_critic", model_subname=model_subname, minimal_distance=minimal_distance)
         elif model_type=="DQN_2": self.Agent = Agents.DQN_2(state_size = self.state_size, actions=actions, optimizer=optimizer, models_directory=models_directory,
-                                load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname)
+                                load_model=load_model, models_names=bidict({"q_name":q_name, "t_name":t_name}), model_subname=self.model_subname, plot_model_image=plot_model_image)
         self.Agent.visualise_model()
 
-        self.cv_manager = cv_manager.CV_Manager(threshold=object_threshold, name = object)
+        self.cv_manager = cv_manager.CV_Manager(threshold=object_threshold, name = object, images_directory=images_directory)
 
     def trained_control(self, visualise=False):
 
@@ -270,7 +276,7 @@ class Trainer():
 
                             # Detect objects and calculate reward
                             objects=[]
-                            if self.type == "explorer": objects = self.datasetManager.preprocessManager.objects_detection(frame=frame)
+                            if self.type == "explorer" and self.detect_objects: objects = self.datasetManager.preprocessManager.objects_detection(frame=frame)
                             reward=0
                             if ("last_frame" in locals()): reward = self.datasetManager.preprocessManager.reward_calculator(frame=frame, last_frame=last_frame,
                                                                                                                             distance=distance, objects=objects, object_found=object_found)
