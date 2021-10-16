@@ -454,7 +454,7 @@ class Trainer():
 
                 # Detect objects and calculate reward
                 objects = []
-                if self.type == "explorer": objects = self.datasetManager.preprocessManager.objects_detection(
+                if self.type == "explorer" and self.detect_objects: objects = self.datasetManager.preprocessManager.objects_detection(
                     frame=frame)
                 reward = 0
                 if ("last_frame" in locals()): reward = self.datasetManager.preprocessManager.reward_calculator(
