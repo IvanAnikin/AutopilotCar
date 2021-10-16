@@ -19,7 +19,7 @@ import gluoncv
 class PreprocessManager():
     def __init__(self, contours_count = 5, minimal_distance = 15, type = "explorer", edges_avg = 120000, edges_max = 500000,
                  edges_coefficient = 20000, min_edges_sum_for_difference = 100, object_reward = 10, wanted_object_reward = 10,   new_object_reward = 10,
-                 dim=[[0, 0, 1],[1, 1, 1, 1, 1, 1]], scale_percent=50, feed_width=96, feed_height=320):
+                 dim=[[0, 0, 1],[1, 1, 1, 1, 1, 1]], scale_percent=50, feed_width=96, feed_height=320, model_path="C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models"):
         self.contours_count = contours_count
         self.minimal_distance = minimal_distance
         self.type = type
@@ -27,7 +27,7 @@ class PreprocessManager():
         self.edges_max = edges_max
         self.edges_coefficient = edges_coefficient
         self.min_edges_sum_for_difference = min_edges_sum_for_difference
-        self.model_path = "C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models"
+        self.model_path = model_path
         self.confidence_default = 0.5
         self.threshold_default = 0.3
         self.detected_objects = []
