@@ -46,7 +46,8 @@ class Trainer():
         images_directory = '../src/img/',
         plot_model_image = False,
         detect_objects = True,
-        objects_model_path="C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models"
+        objects_model_path="C:/Users/ivana/PycharmProjects/Machine_Learning/ComputerVision/AutopilotCar/Managers/CV_Models",
+        preprocess = False
         ):
         super().__init__()
 
@@ -62,6 +63,7 @@ class Trainer():
         self.MIN_MATCH_COUNT = MIN_MATCH_COUNT
 
         self.detect_objects = detect_objects
+        self.preprocess = preprocess
         self.actions = actions
         self.model_type=model_type
         self.avg_timestep=0
@@ -422,7 +424,8 @@ class Trainer():
         frame = dataset[0][0]
         distance = dataset[0][7]
         state, action, reward = self.get_state_row_data(row=dataset[0])
-        state = self.datasetManager.preprocessManager.state_preprocess(frame=frame, distance=distance)
+        if(self.preprocess): state = self.datasetManager.preprocessManager.state_preprocess(frame=frame, distance=distance)
+        else: state = self.datasetManager.preprocessManager.state_preprocess_row(dataset[0])
 
         with tf.GradientTape(persistent=True) as tape:
             for timestep in range(1, len(dataset)-1):
@@ -446,16 +449,19 @@ class Trainer():
 
                 # Receive next state                                                            # -- ***
                 row = dataset[timestep]
-                frame = row[0]
-                distance = row[7]
-
                 # Preprocess nextstate
-                next_state = self.datasetManager.preprocessManager.state_preprocess(frame=frame, distance=distance)
+                if (self.preprocess):
+                    frame = row[0]
+                    distance = row[7]
+                    next_state = self.datasetManager.preprocessManager.state_preprocess(frame=frame, distance=distance)
+                else:
+                    next_state = self.datasetManager.preprocessManager.state_preprocess_row(row)
 
                 # Detect objects and calculate reward
                 objects = []
-                if self.type == "explorer" and self.detect_objects: objects = self.datasetManager.preprocessManager.objects_detection(
-                    frame=frame)
+                if self.type == "explorer" and self.detect_objects:
+                    if(self.preprocess): objects = self.datasetManager.preprocessManager.objects_detection(frame=frame)
+                    else: objects=row[8]
                 reward = 0
                 if ("last_frame" in locals()): reward = self.datasetManager.preprocessManager.reward_calculator(
                     frame=frame, last_frame=last_frame,
