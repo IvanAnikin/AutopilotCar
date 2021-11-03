@@ -52,7 +52,7 @@ This agent is created of two similar DQN models: target and q model
 ##### First training
 
 It took around 20 hours to train the model on 10 000 steps dataset (10 000 frames, distances, random action and other infromation calculated from these three) locally on my computer
-Model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/main/Model_Weights/%5B%5B0%2C%200%2C%201%5D%2C%20%5B1%2C%201%2C%201%2C%201%2C%201%5D%5D) in .h5 format
+Trained model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/main/Model_Weights/DQN_1/%5B%5B0%2C%200%2C%201%5D%2C%20%5B1%2C%201%2C%201%2C%201%2C%201%5D%5D) in .h5 format
 
 #### DQN_2
 This agent is made of only one similar Q model as in the previous agent with diferent training method using only one network.
@@ -65,6 +65,8 @@ Here you can see the average reward each of the combinations achieved:
 
 Paramters combinations: 
 <img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_stats.png" width="1000"/>
+
+Trained model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/main/Model_Weights/DQN_1/%5B%5B0%2C%200%2C%201%5D%2C%20%5B1%2C%201%2C%201%2C%201%2C%201%5D%5D) in .h5 format
 
 #### Models structure
 ##### Inputs: 
