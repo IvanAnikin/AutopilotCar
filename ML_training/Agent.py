@@ -128,12 +128,11 @@ class Actor_Critic():
         self.critic_value_history.clear()
         self.rewards_history.clear()
 
-
 class DQN():
 
     def __init__(
             self,
-            state_size, actions, optimizer, models_directory, load_model, models_names=bidict({"q_name":"DQN_qnetwork", "t_name":"DQN_target"}), model_subname=""):
+            state_size, actions, optimizer, models_directory, load_model, models_names=bidict({"q_name":"DQN_qnetwork", "t_name":"DQN_target"}), model_subname="", model_subname2=""):
         """Initialize."""
         super().__init__()
 
@@ -145,6 +144,7 @@ class DQN():
         self.models_directory = models_directory
         self.models_names = models_names
         self.model_subname = model_subname
+        self.model_subname2 = model_subname2
 
         self.expirience_replay = deque(maxlen=2000)
 
@@ -218,8 +218,9 @@ class DQN():
 class DQN_2():
 
     def __init__(
-            self,
-            state_size, actions, models_directory, load_model, optimizer=Adam(learning_rate=0.01), models_names=bidict({"q_name":"DQN_qnetwork"}), model_subname="", plot_model_image=False):
+            self,state_size, actions, models_directory, load_model, optimizer=Adam(learning_rate=0.01), models_names=bidict({"q_name":"DQN2"}), model_subname="", model_subname2="",
+            plot_model_image=False, filters=(16, 32, 64), filters_dropouts=[0.2, 0.2, 0.2, 0.2], dropouts=[0.2, 0.2, 0.2], last_layer_activation="linear", layers_after_filters=(64, 32, 16),
+            random_action=False):
         """Initialize."""
         super().__init__()
 
@@ -231,23 +232,25 @@ class DQN_2():
         self.models_directory = models_directory
         self.models_names = models_names
         self.model_subname = model_subname
+        self.model_subname2 = model_subname2
         self.plot_model_image = plot_model_image
+        self.random_action = random_action
 
         self.expirience_replay = deque(maxlen=2000)
 
         # Initialize discount and exploration rate
         self.gamma = 0.6
         self.epsilon = 0.1
-        dir = "{directory}/Trained/673243b/All/"
+        dir = "{directory}/Trained/996df78/{classname}/"
         if model_subname != "": dir += "{subname}/"
+        if model_subname2 != "": dir += "{subname2}/"
         dir+="{name}.h5"
-        model_full_path=bidict({"q_path":dir.format(directory=models_directory, name=models_names["q_name"], subname=model_subname),
-                                "t_path":dir.format(directory=models_directory, name=models_names["t_name"], subname=model_subname)})
+        model_full_path=bidict({"q_path":dir.format(directory=models_directory, name=models_names["q_name"], subname=model_subname, subname2=model_subname2, classname=self.__class__.__name__)})
 
 
-        self.Model_manager = Models.DNN(c_dim=state_size[0][0], a_dim=state_size[0][1], d_dim=state_size[0][2],
-                                        width=state_size[1][0], height=state_size[1][1], depth=state_size[1][2],
-                                        output_size=self._action_size)
+        self.Model_manager = Models.DNN(c_dim=state_size[0][0], a_dim=state_size[0][1], d_dim=state_size[0][2], width=state_size[1][0], height=state_size[1][1], depth=state_size[1][2],
+                                        output_size=self._action_size, filters=filters, dropouts=dropouts, filters_dropouts=filters_dropouts, last_layer_activation=last_layer_activation,
+                                        layers_after_filters=layers_after_filters)
         self.q_network = self.Model_manager.model
         print("Model created")
 
@@ -260,14 +263,8 @@ class DQN_2():
 
     def act(self, state, training = False):
 
-        # "Select action using epsilon-greedy policy"
-        # sample_epsilon = np.random.rand()
-        # if sample_epsilon <= epsilon:  # Select random action
-        #    action = np.random.choice(action_dim)
-        # else:  # Select action with highest Q-value
-
-        if np.random.rand() <= self.epsilon and not training:
-            return np.random.choice(self.actions)
+        if (np.random.rand() <= self.epsilon and not training) or self.random_action:
+            return (np.random.choice(self.actions), 0)
 
         "Obtain Q-values from network"
         q_values = self.q_network(state)
@@ -293,17 +290,27 @@ class DQN_2():
         "Apply gradients to update network weights"
         self._optimizer.apply_gradients(zip(grads, self.q_network.trainable_variables))
 
-    def save_model(self, subname=""):
-        dir="{directory}/Training/{class_name}/"
-        if subname!="": dir+="{subname}/"
-        name = dir.format(directory=self.models_directory, class_name=self.__class__.__name__, subname=subname)
-        if not os.path.exists(name): os.mkdir(name)
-        name+="{name}.h5"
+    def save_model(self):
+        name = self.name_of_model_folder()
+        name+="/{name}.h5"
         self.q_network.save_weights(name.format(name=self.models_names["q_name"]))
+
+    def name_of_model_folder(self):
+        dir = "{directory}/Training/{class_name}/"
+        if self.model_subname != "": dir += "{subname}"
+        name = dir.format(directory=self.models_directory, class_name=self.__class__.__name__, subname=self.model_subname)
+        if not os.path.exists(name): os.mkdir(name)
+        if self.model_subname2 != "": name += "/{subname2}".format(subname2=self.model_subname2)
+        if not os.path.exists(name): os.mkdir(name)
+
+        return name
 
     def visualise_model(self):
         self.q_network.summary()
-        if(self.plot_model_image): plot_model(model=self.q_network, to_file="{directory}/img/{name}_{subname}.png".format(directory=self.models_directory, name=self.models_names["q_name"], subname=self.model_subname), show_shapes=True)
+        name = "{directory}/img/{name}/{subname}".format(directory=self.models_directory, name=self.__class__.__name__, subname=self.model_subname)
+        if not os.path.exists(name): os.mkdir(name)
+        name+="/{subname2}.png".format(subname2=self.model_subname2)
+        if(self.plot_model_image): plot_model(model=self.q_network, to_file=name, show_shapes=True)
 
 class DNN():
 

@@ -10,11 +10,8 @@ class DNN():
 
   def __init__(
       self,
-      c_dim = (1), a_dim = 3, d_dim = 3,
-      width = 120, height = 160, depth = 2,
-      output_size = 3, # forward, left, right
-      filters=(16, 32, 64),
-      critic=False):
+      c_dim = (1), a_dim = 3, d_dim = 3, width = 120, height = 160, depth = 2, output_size = 3, critic=False,
+      filters=(16, 32, 64), filters_dropouts=[0.2, 0.2, 0.2, 0.2], dropouts=[0.2, 0.2, 0.2], last_layer_activation="linear", layers_after_filters=(64, 32, 16)):
     super().__init__()
 
     self.c_dim = c_dim
@@ -25,6 +22,10 @@ class DNN():
     self.depth = depth
     self.output_size = output_size
     self.filters = filters
+    self.filters_dropouts = filters_dropouts
+    self.dropouts = dropouts
+    self.last_layer_activation = last_layer_activation
+    self.layers_after_filters= layers_after_filters
 
     self.model = self.create_model(critic)
     # compile the model using mean absolute percentage error as our loss,
@@ -51,7 +52,7 @@ class DNN():
       else: model = Model(inputs=[models[0].input, models[1].input], outputs=actor)
 
     elif(len(models) == 1):
-      actor = Dense(self.output_size, activation="linear")(models[0].output)
+      actor = Dense(self.output_size, activation=self.last_layer_activation)(models[0].output)
       model = Model(inputs=[models[0].input], outputs=actor)
 
     else: raise ValueError('Model input data must not be empty')
@@ -102,15 +103,19 @@ class DNN():
       # CONV => RELU => BN => POO
       x = Conv2D(f, (3, 3), padding="same")(x)
       x = Activation("relu")(x)
+      if(self.filters_dropouts[i] != 0): x = Dropout(self.dropouts[i])(x)
       x = BatchNormalization(axis=chanDim)(x)
-      x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+      if(i<len(self.filters)-1): x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
 
     # flatten the volume, then FC => RELU => BN => DROPOUT
     x = Flatten()(x)
-    x = Dense(16)(x)
-    x = Activation("relu")(x)
-    x = BatchNormalization(axis=chanDim)(x)
-    x = Dropout(0.5)(x)
+    x = Dropout(self.dropouts[0])(x)
+
+    for (i, f) in enumerate(self.layers_after_filters):
+      x = Dense(f)(x)
+      x = Activation("relu")(x)
+      x = Dropout(self.dropouts[i+1])(x)
+      x = BatchNormalization(axis=chanDim)(x)
     # apply another FC layer, this one to match the number of nodes
     # coming out of the MLP
     x = Dense(4)(x)

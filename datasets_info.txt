@@ -8,7 +8,7 @@
 # 6 - reward		- r     - not use   for training
 # 7 - distance		- d     - use       for training    - works
 # 8 - objects       - o     - use       for training    - works
-# 9 - monodepth     - m     - use       for training    -
+# 9 - monodepth     - m     - use       for training    - works
 
 Model input dim
 [
@@ -23,6 +23,9 @@ Model input dim
         2 - B resized       - use       for training    - works
         3 - canny_edges     - use       for training    - works
         4 - blackAndWhite   - use       for training    - works
-        5 - monodepth       - use       for training    -
+        5 - monodepth       - use       for training    - works
     ]
 ]
+
+model_same_action
+    [timestep, action, reward]

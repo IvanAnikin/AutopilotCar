@@ -273,7 +273,8 @@ class PreprocessManager():
         state = []
         if (self.dim[0][2] != 0): num_data.append(distance)
 
-        if (self.dim[1][0] != 0 or self.dim[1][1] != 0 or self.dim[1][2] != 0): resized,dim=self.resized(frame=frame)
+        #if (self.dim[1][0] != 0 or self.dim[1][1] != 0 or self.dim[1][2] != 0):
+        resized,dim=self.resized(frame=frame)
         if (self.dim[1][0] != 0): vid_data.append(resized[:, :, 0])
         if (self.dim[1][1] != 0): vid_data.append(resized[:, :, 1])
         if (self.dim[1][2] != 0): vid_data.append(resized[:, :, 2])
@@ -289,24 +290,3 @@ class PreprocessManager():
 
         return state
 
-    def state_preprocess_row(self, row):
-        num_data = []
-        vid_data = []
-        state = []
-        if (self.dim[0][2] != 0): num_data.append(row[7])
-
-        if (self.dim[1][0] != 0 or self.dim[1][1] != 0 or self.dim[1][2] != 0): resized = row[1]
-        if (self.dim[1][0] != 0): vid_data.append(resized[:, :, 0])
-        if (self.dim[1][1] != 0): vid_data.append(resized[:, :, 1])
-        if (self.dim[1][2] != 0): vid_data.append(resized[:, :, 2])
-        if (self.dim[1][3] != 0): vid_data.append(row[2])
-        if (self.dim[1][4] != 0): vid_data.append(row[3])
-        if (self.dim[1][5] != 0): vid_data.append(row[9])
-
-        if vid_data != []: vid_data = np.array([vid_data])
-        for num_element in num_data: state.append(np.array([num_element]))
-        state.append(vid_data)
-
-        if len(state) == 0: state = state[0]
-
-        return state
