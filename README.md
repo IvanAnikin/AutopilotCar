@@ -64,7 +64,7 @@ Here you can see the average reward each of the combinations achieved:
 <img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_chart.jpg" width="500"/>
 
 Paramters combinations: 
-<img src="https://supercoolserver.azurewebsites.net/assets/img/params_names.jpg" width="1000"/>
+<img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_stats.jpg" width="1000"/>
 
 #### Models structure
 ##### Inputs: 
