@@ -54,14 +54,26 @@ This agent is created of two similar DQN models: target and q model
 It took around 20 hours to train the model on 10 000 steps dataset (10 000 frames, distances, random action and other infromation calculated from these three) locally on my computer
 Model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/main/Model_Weights/%5B%5B0%2C%200%2C%201%5D%2C%20%5B1%2C%201%2C%201%2C%201%2C%201%5D%5D) in .h5 format
 
-##### Models structure
-###### Inputs: 
+#### DQN_2
+This agent is made of only one similar Q model as in the previous agent with diferent training method using only one network.
+
+##### Training
+Training was performed on [all of these combinations](https://github.com/IvanAnikin/AutopilotCar/tree/main/ML_training/params.py) of different parameters, such as: input data dimension, filters, droputs and activation functions
+
+Here you can see the average reward each of the combinations achieved:
+<img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_chart.jpg" width="500"/>
+
+Paramters combinations: 
+<img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_stats.png" width="1000"/>
+
+#### Models structure
+##### Inputs: 
 1. Resized video frame in all RGB colors
 2. BlackAndWhite thresholded image
 3. Canny edges frame 
 4. Distance
 
-###### Output:
+##### Output:
 - Q value for each of the actions (Left, Right, Forward)
 
  <img src="https://supercoolserver.azurewebsites.net/assets/img/DQN_qnetwork.png" width="500"/>
