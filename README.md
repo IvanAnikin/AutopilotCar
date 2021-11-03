@@ -61,7 +61,9 @@ This agent is made of only one similar Q model as in the previous agent with dif
 Training was performed on [all of these combinations](https://github.com/IvanAnikin/AutopilotCar/tree/main/ML_training/params.py) of different parameters, such as: input data dimension, filters, droputs and activation functions
 
 Here you can see the average reward each of the combinations achieved:
-<img src="https://supercoolserver.azurewebsites.net/assets/img/params_rewards_stats.jpg" width="500"/>
+<img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_chart.jpg" width="500"/>
+Paramters combinations: 
+<img src="https://supercoolserver.azurewebsites.net/assets/img/params_names.jpg" width="500"/>
 
 #### Models structure
 ##### Inputs: 
