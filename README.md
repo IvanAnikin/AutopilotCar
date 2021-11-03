@@ -66,7 +66,7 @@ Here you can see the average reward each of the combinations achieved:
 Paramters combinations: 
 <img src="https://supercoolserver.azurewebsites.net/assets/img/rewards_stats.png" width="1000"/>
 
-Trained model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/main/Model_Weights/DQN_1/%5B%5B0%2C%200%2C%201%5D%2C%20%5B1%2C%201%2C%201%2C%201%2C%201%5D%5D) in .h5 format
+Trained model weights are saved [here](https://github.com/IvanAnikin/AutopilotCar/tree/main/Model_Weights/DQN_2) in .h5 format
 
 #### Models structure
 ##### Inputs: 
